@@ -73,8 +73,14 @@ alembic upgrade head
 ### 6. Run the Server
 
 ```bash
-uvicorn app.main:app --reload
+# Windows (PowerShell)
+./scripts/dev.ps1
+
+# macOS/Linux
+./scripts/dev.sh
 ```
+
+Auto-run on workspace open is configured via `.vscode/tasks.json` (`runOn: folderOpen`) and runs dependency sync only (`scripts/sync_deps.ps1` or `scripts/sync_deps.sh`).
 
 API docs available at: `http://localhost:8000/docs`
 
@@ -89,6 +95,22 @@ pytest tests/unit -v
 ```bash
 celery -A workers.celery_app worker --loglevel=info
 ```
+
+## Git Hooks (VS Code + Cursor)
+
+This repo uses a Git `pre-commit` hook in `hooks/pre-commit` to:
+- sync/install dependencies with `uv` (`uv sync --extra dev`, or `--frozen` when `uv.lock` exists)
+- keep `requirements.txt` synced from `pyproject.toml` before each commit
+
+All hook scripts live in `hooks/`, and automation is Git-based (editor-agnostic).
+
+Set the hooks path once per clone:
+
+```bash
+git config --local core.hooksPath hooks
+```
+
+After this, commits made from Cursor, VS Code, or the terminal all run the same hook behavior.
 
 ## API Endpoints
 

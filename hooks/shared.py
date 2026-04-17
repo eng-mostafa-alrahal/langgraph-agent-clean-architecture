@@ -37,7 +37,7 @@ def write_requirements_from_pyproject(root: Path) -> None:
     out = root / "requirements.txt"
     lines = [
         "# Synced from pyproject.toml [project.dependencies]. Regenerate:",
-        "#   python custom_hooks/generate_requirements.py",
+        "#   python hooks/generate_requirements.py",
         "",
     ]
     lines.extend(deps)
@@ -50,3 +50,24 @@ def pip_install_editable(root: Path, *, python_exe: Path) -> int:
         cwd=str(root),
         check=False,
     ).returncode
+
+
+def ensure_git_hooks_configured(root: Path) -> None:
+    """Configure repo-local git hooks path so hooks run in any editor."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        cwd=str(root),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0 or result.stdout.strip().lower() != "true":
+        return
+
+    subprocess.run(
+        ["git", "config", "--local", "core.hooksPath", "hooks"],
+        cwd=str(root),
+        check=False,
+        capture_output=True,
+        text=True,
+    )

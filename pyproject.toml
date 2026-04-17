@@ -79,7 +79,7 @@ package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*", "workers*", "custom_hooks*"]
+include = ["app*", "workers*", "hooks*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -7,11 +7,12 @@ import json
 import sys
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from custom_hooks.sync_requirements import (  # noqa: E402
+from hooks.shared import (  # noqa: E402
+    ensure_git_hooks_configured,
     find_venv_python,
     pip_install_editable,
     project_root_from_env,
@@ -25,6 +26,7 @@ def main() -> None:
         pass
 
     root = project_root_from_env(fallback=_ROOT)
+    ensure_git_hooks_configured(root)
     py = find_venv_python(root)
     if py is None:
         print(json.dumps({}), flush=True)

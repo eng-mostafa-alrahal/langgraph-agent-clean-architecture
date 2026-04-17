@@ -8,11 +8,11 @@ import re
 import sys
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parents[2]
+_ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from custom_hooks.sync_requirements import (  # noqa: E402
+from hooks.shared import (  # noqa: E402
     project_root_from_env,
     write_requirements_from_pyproject,
 )

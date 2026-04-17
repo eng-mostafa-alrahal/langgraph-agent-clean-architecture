@@ -1,0 +1,36 @@
+#!/usr/bin/env sh
+
+# Keep dependencies and requirements.txt synced for all Git clients.
+
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
+
+PYTHON_BIN=""
+if [ -x ".venv/Scripts/python.exe" ]; then
+  PYTHON_BIN=".venv/Scripts/python.exe"
+elif [ -x ".venv/bin/python" ]; then
+  PYTHON_BIN=".venv/bin/python"
+elif command -v python >/dev/null 2>&1; then
+  PYTHON_BIN="python"
+elif command -v py >/dev/null 2>&1; then
+  PYTHON_BIN="py -3"
+fi
+
+if [ -n "$PYTHON_BIN" ]; then
+  # Prefer uv for dependency sync/install.
+  if command -v uv >/dev/null 2>&1; then
+    if [ -f "uv.lock" ]; then
+      uv sync --frozen --extra dev >/dev/null 2>&1 || true
+    else
+      uv sync --extra dev >/dev/null 2>&1 || true
+    fi
+  fi
+
+  # shellcheck disable=SC2086
+  $PYTHON_BIN hooks/generate_requirements.py >/dev/null 2>&1 || true
+  git add requirements.txt >/dev/null 2>&1 || true
+fi
+
+exit 0

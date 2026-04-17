@@ -1,6 +1,6 @@
 """Regenerate requirements.txt from pyproject.toml [project.dependencies].
 
-Run:  python custom_hooks/generate_requirements.py
+Run:  python hooks/generate_requirements.py
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from custom_hooks.sync_requirements import project_root_from_env, write_requirements_from_pyproject
+from hooks.shared import project_root_from_env, write_requirements_from_pyproject
 
 
 def main() -> None:

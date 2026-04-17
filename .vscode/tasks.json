@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Auto Sync Dependencies",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/sync_deps.ps1",
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}/scripts/sync_deps.ps1"
+        ]
+      },
+      "linux": {
+        "command": "sh",
+        "args": [
+          "${workspaceFolder}/scripts/sync_deps.sh"
+        ]
+      },
+      "osx": {
+        "command": "sh",
+        "args": [
+          "${workspaceFolder}/scripts/sync_deps.sh"
+        ]
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "isBackground": false,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 # Synced from pyproject.toml [project.dependencies]. Regenerate:
-#   python custom_hooks/generate_requirements.py
+#   python hooks/generate_requirements.py
 
 langgraph>=0.2.36
 langchain-core>=0.3.13
