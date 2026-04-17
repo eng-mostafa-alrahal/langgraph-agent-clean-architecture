@@ -20,4 +20,5 @@ async def error_handler_node(state: dict[str, Any]) -> dict[str, Any]:
             ],
             "error": None,
         }
-    return state
+    # No error: do not re-emit full state (would duplicate supervisor output in astream).
+    return {}

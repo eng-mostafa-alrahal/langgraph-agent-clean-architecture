@@ -2,26 +2,45 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+import asyncio
+import sys
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+# Psycopg async (LangGraph Postgres checkpointer) requires a selector loop on Windows.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.exception_handlers import app_exception_handler, unhandled_exception_handler
-from app.api.v1.routers import auth_router, chat_router, health_router, session_router, user_router
+from app.api.v1.routers import (
+    auth_router,
+    chat_router,
+    health_router,
+    human_approval_router,
+    session_router,
+    user_router,
+)
 from app.core.config.settings import get_settings
 from app.core.exceptions import AppException
 from app.core.observability import setup_observability
 from app.infrastructure.cache.redis_manager import close_redis
 from app.infrastructure.database.postgres.bootstrap import ensure_database_exists
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.memory.postgres_saver import (
+    close_postgres_checkpoint_saver,
+    init_postgres_checkpoint_saver,
+)
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     ensure_database_exists()
+    await init_postgres_checkpoint_saver()
     setup_observability()
     yield
+    await close_postgres_checkpoint_saver()
     await close_redis()
 
 
@@ -47,6 +66,10 @@ def create_app() -> FastAPI:
         {
             "name": "Chat",
             "description": "Agent execution endpoints (single response or streaming events).",
+        },
+        {
+            "name": "Human Approval",
+            "description": "Resume interrupted agent runs and inspect run state.",
         },
     ]
 
@@ -87,6 +110,7 @@ def create_app() -> FastAPI:
     app.include_router(user_router.router, prefix=api_prefix)
     app.include_router(session_router.router, prefix=api_prefix)
     app.include_router(chat_router.router, prefix=api_prefix)
+    app.include_router(human_approval_router.router, prefix=api_prefix)
 
     return app
 

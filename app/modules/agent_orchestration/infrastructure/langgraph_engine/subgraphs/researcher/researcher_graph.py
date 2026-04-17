@@ -48,7 +48,8 @@ def build_researcher_graph(
         chain = prompt | llm_with_tools
         base_messages = list(state["messages"])
         nudge = (
-            "Important: invoke web_search and rag_search only via native tool_calls from the API. "
+            "Important: invoke web_search, rag_search, and get_local_time only via native tool_calls "
+            "from the API. "
             "Do not write <function=...>, </function>, or any XML-style tool syntax — Groq rejects that."
         )
         for attempt in range(2):

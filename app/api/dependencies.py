@@ -14,6 +14,9 @@ from app.infrastructure.database.postgres.unit_of_work import SqlAlchemyUnitOfWo
 from app.modules.agent_orchestration.application.use_cases.execute_graph_uc import (
     ExecuteGraphUseCase,
 )
+from app.modules.agent_orchestration.application.use_cases.resume_graph_uc import (
+    ResumeGraphUseCase,
+)
 from app.modules.agent_orchestration.application.use_cases.stream_graph_events_uc import (
     StreamGraphEventsUseCase,
 )
@@ -59,6 +62,9 @@ def _build_tool_registry() -> ToolRegistry:
         RAGSearchTool,
         WebSearchTool,
     )
+    from app.modules.agent_orchestration.infrastructure.tools.local_time_tool import (
+        GetLocalTimeTool,
+    )
 
     log = logging.getLogger(__name__)
     settings = get_settings()
@@ -89,6 +95,9 @@ def _build_tool_registry() -> ToolRegistry:
                 log.exception("PGVector initialisation failed")
 
     registry.register(RAGSearchTool(retriever=retriever))
+    registry.register(
+        GetLocalTimeTool(user_agent=f"{settings.APP_NAME}/{settings.APP_VERSION}"),
+    )
     return registry
 
 
@@ -130,3 +139,12 @@ def get_execute_graph_uc() -> ExecuteGraphUseCase:
 
 def get_stream_graph_events_uc() -> StreamGraphEventsUseCase:
     return StreamGraphEventsUseCase(_get_orchestrator())
+
+
+def get_resume_graph_uc() -> ResumeGraphUseCase:
+    return ResumeGraphUseCase(_get_orchestrator())
+
+
+def get_run_state_uc() -> MainGraphOrchestrator:
+    """Return the orchestrator directly for state-inspection endpoints."""
+    return _get_orchestrator()

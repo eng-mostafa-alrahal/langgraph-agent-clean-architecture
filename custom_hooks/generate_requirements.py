@@ -1,21 +1,24 @@
-"""Hook script: regenerate requirements.txt from pyproject.toml.
+"""Regenerate requirements.txt from pyproject.toml [project.dependencies].
 
-Run with:  python custom_hooks/generate_requirements.py
+Run:  python custom_hooks/generate_requirements.py
 """
 
 from __future__ import annotations
 
-import subprocess
 import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from custom_hooks.sync_requirements import project_root_from_env, write_requirements_from_pyproject
 
 
 def main() -> None:
-    subprocess.run(
-        [sys.executable, "-m", "pip", "freeze"],
-        stdout=open("requirements.txt", "w"),
-        check=True,
-    )
-    print("requirements.txt regenerated.")
+    root = project_root_from_env(fallback=_REPO_ROOT)
+    write_requirements_from_pyproject(root)
+    print(f"Wrote {root / 'requirements.txt'}")
 
 
 if __name__ == "__main__":

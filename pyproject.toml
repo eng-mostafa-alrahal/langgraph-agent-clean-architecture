@@ -56,6 +56,8 @@ dependencies = [
   "email-validator>=2.1.0",
 
   # --- Research Tools ---
+  "geopy>=2.4.1",
+  "timezonefinder>=6.5.0",
   "tavily-python>=0.5.0",
   "langchain-postgres>=0.0.12",
   "pgvector>=0.3.0",

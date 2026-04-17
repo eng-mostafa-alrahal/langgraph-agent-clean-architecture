@@ -124,6 +124,14 @@ class GraphCompilationError(AppException):
         super().__init__(detail)
 
 
+class GraphNotInterruptedError(AppException):
+    code = "GRAPH_NOT_INTERRUPTED"
+    status_code = 409
+
+    def __init__(self, detail: str = "Graph run is not in an interrupted state.") -> None:
+        super().__init__(detail)
+
+
 # ── Infrastructure ───────────────────────────────────────────────
 class DatabaseError(AppException):
     code = "DATABASE_ERROR"

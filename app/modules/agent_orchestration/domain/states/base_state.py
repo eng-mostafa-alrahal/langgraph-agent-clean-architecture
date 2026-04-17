@@ -13,3 +13,4 @@ class BaseAgentState(TypedDict):
     session_id: str
     user_id: str
     error: str | None
+    human_feedback: str | None

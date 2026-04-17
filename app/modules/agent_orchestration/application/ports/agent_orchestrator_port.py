@@ -29,3 +29,19 @@ class IAgentOrchestrator(ABC):
     ) -> AsyncIterator[dict[str, Any]]:
         """Yield incremental state updates as the graph executes."""
         ...
+
+    @abstractmethod
+    async def resume(
+        self,
+        *,
+        thread_id: str,
+        action: str,
+        feedback: str | None = None,
+    ) -> dict[str, Any]:
+        """Resume an interrupted graph run with human feedback."""
+        ...
+
+    @abstractmethod
+    async def get_state(self, *, thread_id: str) -> Any:
+        """Return the current state snapshot of a graph run."""
+        ...
