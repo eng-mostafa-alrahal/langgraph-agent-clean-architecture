@@ -8,8 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.postgres.models.user_model import UserORM
+from app.modules.users.domain.user import User
 from app.modules.users.ports.user_repository_port import IUserRepository
-from app.shared.domain_models.user import User
 
 
 class UserRepository(IUserRepository):

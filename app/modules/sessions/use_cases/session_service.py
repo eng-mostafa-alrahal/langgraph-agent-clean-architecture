@@ -5,7 +5,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from app.core.exceptions import NotFoundError
-from app.shared.domain_models.session import Session
+from app.modules.sessions.domain.session import Session
 from app.shared.ports.unit_of_work import IUnitOfWork
 
 

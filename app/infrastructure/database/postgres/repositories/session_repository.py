@@ -8,8 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.postgres.models.session_model import SessionORM
+from app.modules.sessions.domain.session import Session
 from app.modules.sessions.ports.session_repository_port import ISessionRepository
-from app.shared.domain_models.session import Session
 
 
 class SessionRepository(ISessionRepository):

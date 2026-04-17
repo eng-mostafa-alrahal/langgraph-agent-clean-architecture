@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Any
 
 from app.core.exceptions import AgentExecutionError, AppException, RateLimitExceededError
 from app.modules.agent_orchestration.application.agent_error_detail import (
     format_agent_execution_detail,
 )
+from app.modules.agent_orchestration.application.dtos.agent_result import AgentEvent
 from app.modules.agent_orchestration.application.ports.agent_orchestrator_port import (
     IAgentOrchestrator,
 )
@@ -24,7 +24,7 @@ class StreamGraphEventsUseCase:
         *,
         session_id: str,
         user_id: str,
-    ) -> AsyncIterator[dict[str, Any]]:
+    ) -> AsyncIterator[AgentEvent]:
         try:
             async for event in self._orchestrator.stream(
                 user_message, session_id=session_id, user_id=user_id

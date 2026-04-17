@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from app.core.exceptions import AgentExecutionError, AppException, RateLimitExceededError
 from app.modules.agent_orchestration.application.agent_error_detail import (
     format_agent_execution_detail,
 )
+from app.modules.agent_orchestration.application.dtos.agent_result import AgentRunResult
 from app.modules.agent_orchestration.application.ports.agent_orchestrator_port import (
     IAgentOrchestrator,
 )
@@ -23,7 +22,7 @@ class ExecuteGraphUseCase:
         *,
         session_id: str,
         user_id: str,
-    ) -> dict[str, Any]:
+    ) -> AgentRunResult:
         try:
             return await self._orchestrator.invoke(
                 user_message, session_id=session_id, user_id=user_id

@@ -3,8 +3,8 @@
 import pytest
 from pydantic import ValidationError
 
-from app.shared.domain_models.session import Session
-from app.shared.domain_models.user import User
+from app.modules.sessions.domain.session import Session
+from app.modules.users.domain.user import User
 from app.shared.uuid_utils import uuid7
 
 

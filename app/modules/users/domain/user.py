@@ -1,3 +1,5 @@
+"""User domain entity — owned by the users module."""
+
 from __future__ import annotations
 
 from pydantic import EmailStr, Field

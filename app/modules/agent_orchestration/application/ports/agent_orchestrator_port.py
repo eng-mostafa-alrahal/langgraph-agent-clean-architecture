@@ -1,10 +1,20 @@
-"""Contract for the top-level agent orchestrator."""
+"""Contract for the top-level agent orchestrator.
+
+The port exposes only framework-agnostic DTOs. Implementations are free to
+use LangGraph / LangChain / anything else internally, but must translate
+those types to :mod:`agent_orchestration.application.dtos` at the boundary.
+"""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
-from typing import Any
+
+from app.modules.agent_orchestration.application.dtos.agent_result import (
+    AgentEvent,
+    AgentRunResult,
+    AgentStateSnapshot,
+)
 
 
 class IAgentOrchestrator(ABC):
@@ -15,19 +25,19 @@ class IAgentOrchestrator(ABC):
         *,
         session_id: str,
         user_id: str,
-    ) -> dict[str, Any]:
-        """Run the full graph synchronously and return the final state."""
+    ) -> AgentRunResult:
+        """Run the full graph synchronously and return the final result."""
         ...
 
     @abstractmethod
-    async def stream(
+    def stream(
         self,
         user_message: str,
         *,
         session_id: str,
         user_id: str,
-    ) -> AsyncIterator[dict[str, Any]]:
-        """Yield incremental state updates as the graph executes."""
+    ) -> AsyncIterator[AgentEvent]:
+        """Yield incremental events as the graph executes."""
         ...
 
     @abstractmethod
@@ -37,11 +47,11 @@ class IAgentOrchestrator(ABC):
         thread_id: str,
         action: str,
         feedback: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> AgentRunResult:
         """Resume an interrupted graph run with human feedback."""
         ...
 
     @abstractmethod
-    async def get_state(self, *, thread_id: str) -> Any:
+    async def get_state(self, *, thread_id: str) -> AgentStateSnapshot:
         """Return the current state snapshot of a graph run."""
         ...

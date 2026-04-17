@@ -11,6 +11,9 @@ from app.core.config.di_container import get_container
 from app.core.config.settings import Settings, get_settings
 from app.core.security.jwt_service import verify_access_token
 from app.infrastructure.database.postgres.unit_of_work import SqlAlchemyUnitOfWork
+from app.modules.agent_orchestration.application.ports.agent_orchestrator_port import (
+    IAgentOrchestrator,
+)
 from app.modules.agent_orchestration.application.use_cases.execute_graph_uc import (
     ExecuteGraphUseCase,
 )
@@ -145,6 +148,6 @@ def get_resume_graph_uc() -> ResumeGraphUseCase:
     return ResumeGraphUseCase(_get_orchestrator())
 
 
-def get_run_state_uc() -> MainGraphOrchestrator:
-    """Return the orchestrator directly for state-inspection endpoints."""
+def get_run_state_uc() -> IAgentOrchestrator:
+    """Return the orchestrator (as its port) for state-inspection endpoints."""
     return _get_orchestrator()

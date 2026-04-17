@@ -1,13 +1,16 @@
 """Compiles all sub-graphs into the master agent graph.
 
-This is the single entry-point the application layer calls via the
-IAgentOrchestrator port.
+This module is the single LangGraph adapter that fulfils
+:class:`IAgentOrchestrator`.  It is the *only* place in the codebase where
+LangGraph / LangChain types are allowed; its public surface returns pure
+DTOs from ``agent_orchestration.application.dtos``.
 """
 
 from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator
+from time import perf_counter
 from typing import Any
 
 from langchain_core.messages import HumanMessage
@@ -16,13 +19,25 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 
 from app.core.config.settings import get_settings
-from app.core.exceptions import GraphCompilationError
+from app.core.exceptions import GraphCompilationError, GraphNotInterruptedError
+from app.core.observability.request_context import get_request_id
+from app.modules.agent_orchestration.application.dtos.agent_result import (
+    AgentEvent,
+    AgentRunResult,
+    AgentStateSnapshot,
+)
 from app.modules.agent_orchestration.application.ports.agent_orchestrator_port import (
     IAgentOrchestrator,
 )
 from app.modules.agent_orchestration.application.ports.llm_registry_port import ILLMRegistry
 from app.modules.agent_orchestration.application.ports.tool_registry_port import IToolRegistry
 from app.modules.agent_orchestration.domain.states.supervisor_state import SupervisorState
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.mappers.state_mapper import (
+    snapshot_is_paused,
+    to_agent_events,
+    to_run_result,
+    to_state_snapshot,
+)
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.memory.postgres_saver import (
     ensure_checkpointer_ready,
     get_postgres_saver,
@@ -35,36 +50,7 @@ from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.s
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _snapshot_is_paused(snapshot: Any) -> bool:
-    """True when the checkpoint is waiting for human resume.
-
-    LangGraph may represent a pause either as ``snapshot.next`` (nodes to run) or
-    as ``snapshot.interrupts`` / per-task interrupts with an empty ``next`` tuple.
-    Only checking ``next`` incorrectly raises GRAPH_NOT_INTERRUPTED on newer runtimes.
-    """
-    if getattr(snapshot, "next", None):
-        return True
-    intr = getattr(snapshot, "interrupts", None) or ()
-    if intr:
-        return True
-    for task in getattr(snapshot, "tasks", None) or ():
-        if getattr(task, "interrupts", None):
-            return True
-    return False
-
-
-def _interrupt_payload_from_snapshot(snapshot: Any) -> Any:
-    """Best-effort payload passed to ``interrupt()`` for the pending gate."""
-    intr = getattr(snapshot, "interrupts", None) or ()
-    if intr:
-        return intr[0].value
-    for task in getattr(snapshot, "tasks", None) or ():
-        t_intr = getattr(task, "interrupts", None) or ()
-        if t_intr:
-            return t_intr[0].value
-    return None
+SLOW_STEP_MS = 3_000.0
 
 
 class MainGraphOrchestrator(IAgentOrchestrator):
@@ -120,7 +106,7 @@ class MainGraphOrchestrator(IAgentOrchestrator):
         except Exception as exc:
             raise GraphCompilationError(detail=str(exc)) from exc
 
-    # ── helpers ──────────────────────────────────────────────────
+    # ── helpers (LangGraph-specific, kept private) ───────────────
 
     @staticmethod
     def _build_initial_state(
@@ -138,18 +124,20 @@ class MainGraphOrchestrator(IAgentOrchestrator):
             "delegation_reasoning": None,
         }
 
-    async def _check_interrupted(
+    @staticmethod
+    def _config_for(thread_id: str) -> dict[str, Any]:
+        return {"configurable": {"thread_id": thread_id}}
+
+    async def _result_from(
         self,
         graph: CompiledStateGraph,
         config: dict[str, Any],
-        result: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Attach interrupt metadata to *result* when the graph is paused."""
+        state: Any,
+        *,
+        thread_id: str,
+    ) -> AgentRunResult:
         snapshot = await graph.aget_state(config)
-        if _snapshot_is_paused(snapshot):
-            result["__interrupted"] = True
-            result["__interrupt_payload"] = _interrupt_payload_from_snapshot(snapshot)
-        return result
+        return to_run_result(state, snapshot, thread_id=thread_id)
 
     # ── IAgentOrchestrator implementation ────────────────────────
 
@@ -159,13 +147,23 @@ class MainGraphOrchestrator(IAgentOrchestrator):
         *,
         session_id: str,
         user_id: str,
-    ) -> dict[str, Any]:
+    ) -> AgentRunResult:
+        started = perf_counter()
         await ensure_checkpointer_ready()
         graph = self._compile()
         initial_state = self._build_initial_state(user_message, session_id, user_id)
-        config = {"configurable": {"thread_id": session_id}}
-        result = await graph.ainvoke(initial_state, config=config)
-        return await self._check_interrupted(graph, config, result)
+        config = self._config_for(session_id)
+        state = await graph.ainvoke(initial_state, config=config)
+        result = await self._result_from(graph, config, state, thread_id=session_id)
+        elapsed_ms = (perf_counter() - started) * 1000
+        logger.info(
+            "graph.invoke completed request_id=%s thread_id=%s interrupted=%s elapsed_ms=%.1f",
+            get_request_id(),
+            session_id,
+            result.interrupted,
+            elapsed_ms,
+        )
+        return result
 
     async def stream(
         self,
@@ -173,13 +171,47 @@ class MainGraphOrchestrator(IAgentOrchestrator):
         *,
         session_id: str,
         user_id: str,
-    ) -> AsyncIterator[dict[str, Any]]:
+    ) -> AsyncIterator[AgentEvent]:
+        started = perf_counter()
+        last_event_at = started
+        event_count = 0
         await ensure_checkpointer_ready()
         graph = self._compile()
         initial_state = self._build_initial_state(user_message, session_id, user_id)
-        config = {"configurable": {"thread_id": session_id}}
-        async for event in graph.astream(initial_state, config=config):
-            yield event
+        config = self._config_for(session_id)
+        async for chunk in graph.astream(initial_state, config=config):
+            for event in to_agent_events(chunk):
+                now = perf_counter()
+                event_count += 1
+                delta_ms = (now - last_event_at) * 1000
+                total_ms = (now - started) * 1000
+                last_event_at = now
+                logger.info(
+                    "graph.stream event request_id=%s thread_id=%s idx=%d node=%s delta_ms=%.1f total_ms=%.1f",
+                    get_request_id(),
+                    session_id,
+                    event_count,
+                    event.node,
+                    delta_ms,
+                    total_ms,
+                )
+                if delta_ms >= SLOW_STEP_MS:
+                    logger.warning(
+                        "graph.stream slow_step request_id=%s thread_id=%s node=%s delta_ms=%.1f",
+                        get_request_id(),
+                        session_id,
+                        event.node,
+                        delta_ms,
+                    )
+                yield event
+        total_ms = (perf_counter() - started) * 1000
+        logger.info(
+            "graph.stream completed request_id=%s thread_id=%s events=%d elapsed_ms=%.1f",
+            get_request_id(),
+            session_id,
+            event_count,
+            total_ms,
+        )
 
     async def resume(
         self,
@@ -187,41 +219,36 @@ class MainGraphOrchestrator(IAgentOrchestrator):
         thread_id: str,
         action: str,
         feedback: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> AgentRunResult:
+        started = perf_counter()
         await ensure_checkpointer_ready()
         graph = self._compile()
-        config = {"configurable": {"thread_id": thread_id}}
+        config = self._config_for(thread_id)
 
         snapshot = await graph.aget_state(config)
-        if not _snapshot_is_paused(snapshot):
-            from app.core.exceptions import GraphNotInterruptedError
-
+        if not snapshot_is_paused(snapshot):
             raise GraphNotInterruptedError()
 
         resume_value: dict[str, Any] = {"action": action}
         if feedback:
             resume_value["feedback"] = feedback
 
-        result = await graph.ainvoke(Command(resume=resume_value), config=config)
-        return await self._check_interrupted(graph, config, result)
+        state = await graph.ainvoke(Command(resume=resume_value), config=config)
+        result = await self._result_from(graph, config, state, thread_id=thread_id)
+        elapsed_ms = (perf_counter() - started) * 1000
+        logger.info(
+            "graph.resume completed request_id=%s thread_id=%s action=%s interrupted=%s elapsed_ms=%.1f",
+            get_request_id(),
+            thread_id,
+            action,
+            result.interrupted,
+            elapsed_ms,
+        )
+        return result
 
-    async def get_state(self, *, thread_id: str) -> Any:
+    async def get_state(self, *, thread_id: str) -> AgentStateSnapshot:
         await ensure_checkpointer_ready()
         graph = self._compile()
-        config = {"configurable": {"thread_id": thread_id}}
+        config = self._config_for(thread_id)
         snapshot = await graph.aget_state(config)
-        return {
-            "values": snapshot.values,
-            "next": list(snapshot.next) if snapshot.next else [],
-            "interrupted": _snapshot_is_paused(snapshot),
-            "tasks": [
-                {
-                    "id": t.id,
-                    "name": t.name,
-                    "interrupts": [
-                        {"value": i.value} for i in (t.interrupts or [])
-                    ],
-                }
-                for t in (snapshot.tasks or [])
-            ],
-        }
+        return to_state_snapshot(snapshot, thread_id=thread_id)

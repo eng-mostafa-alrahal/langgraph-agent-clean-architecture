@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from app.core.exceptions import AgentExecutionError, AppException, RateLimitExceededError
 from app.modules.agent_orchestration.application.agent_error_detail import (
     format_agent_execution_detail,
 )
+from app.modules.agent_orchestration.application.dtos.agent_result import AgentRunResult
 from app.modules.agent_orchestration.application.ports.agent_orchestrator_port import (
     IAgentOrchestrator,
 )
@@ -23,7 +22,7 @@ class ResumeGraphUseCase:
         thread_id: str,
         action: str,
         feedback: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> AgentRunResult:
         try:
             return await self._orchestrator.resume(
                 thread_id=thread_id,

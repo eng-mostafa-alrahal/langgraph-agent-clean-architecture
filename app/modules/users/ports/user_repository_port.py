@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
-from app.shared.domain_models.user import User
+from app.modules.users.domain.user import User
 from app.shared.ports.base_repository import IRepository
 
 

@@ -13,7 +13,7 @@ from app.core.security.jwt_service import (
     create_refresh_token,
     verify_refresh_token,
 )
-from app.shared.domain_models.user import User
+from app.modules.users.domain.user import User
 from app.shared.ports.unit_of_work import IUnitOfWork
 
 

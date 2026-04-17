@@ -1,3 +1,5 @@
+"""Session domain entity — owned by the sessions module."""
+
 from __future__ import annotations
 
 from uuid import UUID

@@ -2,13 +2,42 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 from app.core.config.settings import get_settings
 
 
+def _quiet_noisy_loggers() -> None:
+    """Reduce third-party log noise while preserving app latency traces."""
+    noisy_levels = {
+        # HTTP clients used by LLM/tool providers
+        "httpcore": logging.WARNING,
+        "httpx": logging.WARNING,
+        "urllib3": logging.WARNING,
+        "groq": logging.WARNING,
+        # Optional tracing backend chatter
+        "langsmith": logging.WARNING,
+        # SQL statement spam (keep warnings/errors only)
+        "sqlalchemy.engine": logging.WARNING,
+    }
+    for name, level in noisy_levels.items():
+        logging.getLogger(name).setLevel(level)
+
+
 def setup_observability() -> None:
     settings = get_settings()
+    log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        force=True,
+    )
+    logging.getLogger("app").setLevel(log_level)
+    _quiet_noisy_loggers()
+    logging.getLogger(__name__).info(
+        "Observability initialized level=%s", settings.LOG_LEVEL.upper()
+    )
 
     # LangSmith
     if settings.LANGSMITH_API_KEY:

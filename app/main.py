@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from time import perf_counter
 
 # Psycopg async (LangGraph Postgres checkpointer) requires a selector loop on Windows.
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.exception_handlers import app_exception_handler, unhandled_exception_handler
@@ -26,12 +29,15 @@ from app.api.v1.routers import (
 from app.core.config.settings import get_settings
 from app.core.exceptions import AppException
 from app.core.observability import setup_observability
+from app.core.observability.request_context import set_request_id
 from app.infrastructure.cache.redis_manager import close_redis
 from app.infrastructure.database.postgres.bootstrap import ensure_database_exists
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.memory.postgres_saver import (
     close_postgres_checkpoint_saver,
     init_postgres_checkpoint_saver,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -91,6 +97,27 @@ def create_app() -> FastAPI:
     )
 
     # ── Middleware ────────────────────────────────────────────────
+    @app.middleware("http")
+    async def request_timing_middleware(
+        request: Request, call_next
+    ) -> Response:  # type: ignore[no-untyped-def]
+        request_id = request.headers.get("x-request-id", str(uuid.uuid4()))
+        set_request_id(request_id)
+        started = perf_counter()
+        response = await call_next(request)
+        elapsed_ms = (perf_counter() - started) * 1000
+        response.headers["x-request-id"] = request_id
+        response.headers["x-process-time-ms"] = f"{elapsed_ms:.1f}"
+        logger.info(
+            "api.request method=%s path=%s status=%s request_id=%s elapsed_ms=%.1f",
+            request.method,
+            request.url.path,
+            response.status_code,
+            request_id,
+            elapsed_ms,
+        )
+        return response
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],

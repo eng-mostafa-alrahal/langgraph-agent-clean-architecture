@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from uuid import UUID
 
-from app.shared.domain_models.session import Session
+from app.modules.sessions.domain.session import Session
 from app.shared.ports.base_repository import IRepository
 
 
