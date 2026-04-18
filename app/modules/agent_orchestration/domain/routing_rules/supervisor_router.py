@@ -11,7 +11,9 @@ from typing import Literal
 from app.modules.agent_orchestration.domain.states.supervisor_state import SupervisorState
 
 
-def route_supervisor(state: SupervisorState) -> Literal["researcher", "chat", "end"]:
+def route_supervisor(
+    state: SupervisorState,
+) -> Literal["researcher", "chat", "workspace", "end"]:
     if state.get("error"):
         return "end"
     return state.get("next_agent") or "chat"

@@ -124,6 +124,15 @@ class GraphCompilationError(AppException):
         super().__init__(detail)
 
 
+class MCPBootstrapError(GraphCompilationError):
+    """Raised when MCP tool discovery/namespacing fails during startup orchestration."""
+
+    code = "MCP_BOOTSTRAP_ERROR"
+
+    def __init__(self, detail: str = "Failed to bootstrap MCP tools.") -> None:
+        super().__init__(detail=detail)
+
+
 class GraphNotInterruptedError(AppException):
     code = "GRAPH_NOT_INTERRUPTED"
     status_code = 409

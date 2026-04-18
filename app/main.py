@@ -26,12 +26,17 @@ from app.api.v1.routers import (
     session_router,
     user_router,
 )
+from app.core.config.di_container import get_container
 from app.core.config.settings import get_settings
 from app.core.exceptions import AppException
 from app.core.observability import setup_observability
 from app.core.observability.request_context import set_request_id
 from app.infrastructure.cache.redis_manager import close_redis
 from app.infrastructure.database.postgres.bootstrap import ensure_database_exists
+from app.infrastructure.mcp_gateways.client_factory import MCPClientFactory
+from app.modules.agent_orchestration.infrastructure.bootstrap.mcp_bootstrap import (
+    bootstrap_mcp_tools,
+)
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.memory.postgres_saver import (
     close_postgres_checkpoint_saver,
     init_postgres_checkpoint_saver,
@@ -42,10 +47,32 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    settings_boot = get_settings()
+    container = get_container()
+
     ensure_database_exists()
     await init_postgres_checkpoint_saver()
+
+    client = MCPClientFactory.create(settings_boot)
+    try:
+        mcp_tools = await bootstrap_mcp_tools(client) if settings_boot.MCP_SERVERS else []
+        container.register_singleton("mcp_tools", mcp_tools)
+        container.register_singleton("mcp_client", client)
+        if settings_boot.ENVIRONMENT == "development" and settings_boot.MCP_SERVERS:
+            logger.warning(
+                "MCP servers are enabled while ENVIRONMENT=development — "
+                "'uvicorn --reload' may terminate worker processes abruptly and strand "
+                "stdio-based MCP subprocess trees on some platforms. Prefer a steady "
+                "worker when exercising MCP integrations.",
+            )
+    except Exception:
+        await client.aclose()
+        raise
+
     setup_observability()
     yield
+
+    await client.aclose()
     await close_postgres_checkpoint_saver()
     await close_redis()
 

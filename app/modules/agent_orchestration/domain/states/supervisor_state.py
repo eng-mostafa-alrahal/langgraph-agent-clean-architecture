@@ -8,5 +8,5 @@ from app.modules.agent_orchestration.domain.states.base_state import BaseAgentSt
 
 
 class SupervisorState(BaseAgentState):
-    next_agent: Literal["researcher", "chat", "end"] | None
+    next_agent: Literal["researcher", "chat", "workspace", "end"] | None
     delegation_reasoning: str | None

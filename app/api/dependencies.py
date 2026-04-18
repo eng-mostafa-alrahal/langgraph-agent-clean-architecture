@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Annotated
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from fastapi import Depends, Header
 
 from app.core.config.di_container import get_container
 from app.core.config.settings import Settings, get_settings
+from app.core.exceptions import MCPBootstrapError
 from app.core.security.jwt_service import verify_access_token
 from app.infrastructure.database.postgres.unit_of_work import SqlAlchemyUnitOfWork
 from app.modules.agent_orchestration.application.ports.agent_orchestrator_port import (
@@ -61,7 +63,8 @@ def get_session_service(uow: SqlAlchemyUnitOfWork = Depends(get_uow)) -> Session
 # ── Agent use-cases ──────────────────────────────────────────────
 def _build_tool_registry() -> ToolRegistry:
     import logging
-    from app.modules.agent_orchestration.infrastructure.tools.knowledge_retriever.search_toolset import (
+
+    from app.modules.agent_orchestration.infrastructure.tools.knowledge_retriever.search_toolset import (  # noqa: E501
         RAGSearchTool,
         WebSearchTool,
     )
@@ -101,11 +104,31 @@ def _build_tool_registry() -> ToolRegistry:
     registry.register(
         GetLocalTimeTool(user_agent=f"{settings.APP_NAME}/{settings.APP_VERSION}"),
     )
+
+    try:
+        mcp_tools = get_container().resolve("mcp_tools")  # type: ignore[assignment]
+    except LookupError:
+        mcp_tools = []
+
+    for tool in mcp_tools:
+        if tool.name in registry.list_available():
+            raise MCPBootstrapError(
+                detail=(
+                    f"MCP tool '{tool.name}' collides with a built-in tool name. "
+                    "Rename the MCP server key or adjust external tool names."
+                ),
+            )
+        registry.register(tool)
+
     return registry
 
 
 def _orchestrator_tool_config_sig(settings: Settings) -> tuple[object, ...]:
     """When this tuple changes, the compiled graph must be rebuilt (tools differ)."""
+    mcp_sig = json.dumps(
+        [spec.model_dump(mode="json") for spec in settings.MCP_SERVERS],
+        sort_keys=True,
+    )
     return (
         settings.TAVILY_API_KEY,
         settings.PGVECTOR_ENABLED,
@@ -113,6 +136,7 @@ def _orchestrator_tool_config_sig(settings: Settings) -> tuple[object, ...]:
         settings.DEFAULT_LLM_PROVIDER,
         settings.DEFAULT_MODEL_NAME,
         settings.GROQ_TOOL_CALLING_MODEL,
+        mcp_sig,
     )
 
 

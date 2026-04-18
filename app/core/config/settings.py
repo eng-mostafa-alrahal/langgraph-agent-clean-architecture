@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
 from typing import Literal
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
+
+from app.core.config.mcp_servers import MCPServerSpec
 
 
 class Settings(BaseSettings):
@@ -83,6 +86,9 @@ class Settings(BaseSettings):
     LANGSMITH_PROJECT: str = "langgraph-agents"
     OTEL_EXPORTER_ENDPOINT: str = ""
 
+    # ── MCP (Model Context Protocol) ────────────────────────────
+    MCP_SERVERS: list[MCPServerSpec] = Field(default_factory=list)
+
     # ── Celery ───────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
@@ -100,6 +106,18 @@ class Settings(BaseSettings):
         if v is None:
             return ""
         return str(v).strip()
+
+    @field_validator("MCP_SERVERS", mode="before")
+    @classmethod
+    def _parse_mcp_servers(cls, v: object) -> object:
+        if v is None or v == "":
+            return []
+        if isinstance(v, str):
+            text = v.strip()
+            if not text:
+                return []
+            return json.loads(text)
+        return v
 
     @classmethod
     def settings_customise_sources(

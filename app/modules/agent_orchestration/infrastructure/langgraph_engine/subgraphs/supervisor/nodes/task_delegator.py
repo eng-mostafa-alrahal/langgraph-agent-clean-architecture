@@ -11,17 +11,32 @@ from app.modules.agent_orchestration.infrastructure.langgraph_engine.config.prom
     build_supervisor_prompt,
 )
 
+_LEGACY_NEXT_AGENT = {"file_writer": "workspace"}
 
-def make_task_delegator_node(llm: BaseChatModel):
-    prompt = build_supervisor_prompt()
+
+def make_task_delegator_node(llm: BaseChatModel, *, include_workspace_agent: bool = True):
+    prompt = build_supervisor_prompt(include_workspace_agent=include_workspace_agent)
     structured_llm = with_pydantic_output(llm, DelegationDecision)
 
     async def task_delegator(state: SupervisorState) -> dict:
         chain = prompt | structured_llm
         decision: DelegationDecision = await chain.ainvoke({"messages": state["messages"]})  # type: ignore[assignment]
+        raw = decision.next_agent.strip().lower().replace("-", "_")
+        raw = _LEGACY_NEXT_AGENT.get(raw, raw)
+        allowed = {"researcher", "chat", "end"}
+        if include_workspace_agent:
+            allowed.add("workspace")
+        next_agent = raw if raw in allowed else "chat"
+        reasoning = decision.reasoning
+        if raw == "workspace" and not include_workspace_agent:
+            next_agent = "chat"
+            reasoning = (
+                f"{reasoning} (Routing note: no extended workspace tools are registered — "
+                "using chat instead of workspace.)"
+            )
         return {
-            "next_agent": decision.next_agent,
-            "delegation_reasoning": decision.reasoning,
+            "next_agent": next_agent,
+            "delegation_reasoning": reasoning,
         }
 
     return task_delegator

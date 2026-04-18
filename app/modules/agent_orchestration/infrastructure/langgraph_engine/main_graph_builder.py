@@ -48,6 +48,9 @@ from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_node
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.supervisor.supervisor_graph import (
     build_supervisor_graph,
 )
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.tool_partition import (
+    partition_tools_for_agents,
+)
 
 logger = logging.getLogger(__name__)
 SLOW_STEP_MS = 3_000.0
@@ -84,10 +87,12 @@ class MainGraphOrchestrator(IAgentOrchestrator):
                     settings.GROQ_TOOL_CALLING_MODEL,
                 )
             all_tools = self._tool_registry.get_tools(self._tool_registry.list_available())
+            research_tools, workspace_tools = partition_tools_for_agents(all_tools)
 
             supervisor_subgraph = build_supervisor_graph(
                 llm,
-                all_tools,
+                research_tools,
+                workspace_tools,
                 researcher_llm=researcher_llm,
             ).compile()
 

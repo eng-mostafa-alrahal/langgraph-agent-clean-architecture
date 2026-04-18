@@ -1,5 +1,9 @@
 """Verify pure-function routing logic."""
 
+from app.modules.agent_orchestration.domain.routing_rules.approval_router import (
+    route_after_human_review,
+    route_to_human_review,
+)
 from app.modules.agent_orchestration.domain.routing_rules.researcher_router import (
     route_researcher,
 )
@@ -36,3 +40,23 @@ def test_researcher_routes_to_synthesize():
 def test_researcher_routes_to_end_on_error():
     state = {"error": "fail", "context_is_sufficient": False, "search_queries": []}
     assert route_researcher(state) == "end"  # type: ignore[arg-type]
+
+
+def test_approval_routes_workspace_to_human_review():
+    state = {"error": None, "next_agent": "workspace"}
+    assert route_to_human_review(state) == "human_review"  # type: ignore[arg-type]
+
+
+def test_approval_normalizes_legacy_file_writer_to_workspace():
+    state = {"error": None, "next_agent": "file_writer"}
+    assert route_to_human_review(state) == "human_review"  # type: ignore[arg-type]
+
+
+def test_approval_after_human_review_returns_workspace_when_approved():
+    state = {"human_feedback": "approved", "next_agent": "workspace"}
+    assert route_after_human_review(state) == "workspace"  # type: ignore[arg-type]
+
+
+def test_approval_after_human_review_normalizes_legacy_file_writer():
+    state = {"human_feedback": "approved", "next_agent": "file_writer"}
+    assert route_after_human_review(state) == "workspace"  # type: ignore[arg-type]

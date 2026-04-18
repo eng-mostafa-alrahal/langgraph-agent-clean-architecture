@@ -23,21 +23,31 @@ from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.r
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.supervisor.nodes.task_delegator import (
     make_task_delegator_node,
 )
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.workspace.workspace_graph import (
+    build_workspace_graph,
+)
 
 
 def build_supervisor_graph(
     llm: BaseChatModel,
-    tools: list[BaseTool],
+    research_tools: list[BaseTool],
+    workspace_tools: list[BaseTool],
     *,
     researcher_llm: BaseChatModel | None = None,
 ) -> StateGraph:
     tool_llm = researcher_llm if researcher_llm is not None else llm
-    researcher_subgraph = build_researcher_graph(tool_llm, tools).compile()
+    include_workspace_agent = len(workspace_tools) > 0
+    researcher_subgraph = build_researcher_graph(tool_llm, research_tools).compile()
+    workspace_subgraph = build_workspace_graph(tool_llm, workspace_tools).compile()
 
     graph = StateGraph(SupervisorState)
-    graph.add_node("delegate", make_task_delegator_node(llm))
+    graph.add_node(
+        "delegate",
+        make_task_delegator_node(llm, include_workspace_agent=include_workspace_agent),
+    )
     graph.add_node("human_review", human_review_node)
     graph.add_node("researcher", researcher_subgraph)
+    graph.add_node("workspace", workspace_subgraph)
     graph.add_node("chat", make_chat_node(llm))
 
     graph.set_entry_point("delegate")
@@ -49,11 +59,13 @@ def build_supervisor_graph(
     })
     graph.add_conditional_edges("human_review", route_after_human_review, {
         "researcher": "researcher",
+        "workspace": "workspace",
         "chat": "chat",
         "end": END,
     })
 
     graph.add_edge("researcher", END)
+    graph.add_edge("workspace", END)
     graph.add_edge("chat", END)
 
     return graph

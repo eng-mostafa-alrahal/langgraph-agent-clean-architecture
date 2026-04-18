@@ -52,6 +52,9 @@ dependencies = [
   # --- HTTP ---
   "httpx>=0.27.2",
 
+  # --- MCP (Model Context Protocol) ---
+  "langchain-mcp-adapters>=0.1.0",
+
   # --- Validation extras ---
   "email-validator>=2.1.0",
 
