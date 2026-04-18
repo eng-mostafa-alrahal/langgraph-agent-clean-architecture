@@ -47,6 +47,11 @@ def test_approval_routes_workspace_to_human_review():
     assert route_to_human_review(state) == "human_review"  # type: ignore[arg-type]
 
 
+def test_approval_routes_researcher_directly_without_human_review():
+    state = {"error": None, "next_agent": "researcher"}
+    assert route_to_human_review(state) == "researcher"  # type: ignore[arg-type]
+
+
 def test_approval_normalizes_legacy_file_writer_to_workspace():
     state = {"error": None, "next_agent": "file_writer"}
     assert route_to_human_review(state) == "human_review"  # type: ignore[arg-type]

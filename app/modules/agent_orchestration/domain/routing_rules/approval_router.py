@@ -22,13 +22,15 @@ def _normalize_agent(name: str | None) -> str:
 
 def route_to_human_review(
     state: SupervisorState,
-) -> Literal["human_review", "chat", "end"]:
-    """After delegation: errors → END, researcher/workspace → human_review, chat → direct."""
+) -> Literal["human_review", "researcher", "chat", "end"]:
+    """After delegation: errors → END; workspace → human_review; researcher/chat → direct."""
     if state.get("error"):
         return "end"
     next_agent = _normalize_agent(state.get("next_agent"))
-    if next_agent in ("researcher", "workspace"):
+    if next_agent == "workspace":
         return "human_review"
+    if next_agent == "researcher":
+        return "researcher"
     return next_agent  # type: ignore[return-value]
 
 

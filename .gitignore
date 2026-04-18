@@ -12,3 +12,7 @@ build/
 .coverage
 htmlcov/
 *.db
+
+# MCP sandbox workspace — keep folder in repo via .gitkeep only
+mcp_workspace/*
+!mcp_workspace/.gitkeep

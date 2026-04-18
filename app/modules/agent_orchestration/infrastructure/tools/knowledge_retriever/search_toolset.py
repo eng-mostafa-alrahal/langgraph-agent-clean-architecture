@@ -23,8 +23,9 @@ class WebSearchTool(ProjectBaseTool):
     name: str = "web_search"
     description: str = (
         "Search the web for current, real-time information (sports results, news, "
-        "'yesterday' / 'today', live data). Use whenever the user needs facts that may "
-        "have changed recently or are not in the knowledge base."
+        "'yesterday' / 'today', live data). Use when the user needs facts from the "
+        "public web — not internal documents (use rag_search for those). Prefer this "
+        "alone unless the question explicitly also needs internal knowledge."
     )
     args_schema: type[BaseModel] = _SearchInput
 
@@ -59,7 +60,10 @@ class RAGSearchTool(ProjectBaseTool):
     name: str = "rag_search"
     description: str = (
         "Search the internal knowledge base for relevant documents and domain-specific "
-        "information. Use before web search when the question may relate to internal data."
+        "information. Use when the question concerns uploaded material, internal policies, "
+        "or organisation-specific knowledge — not general web news or scores (use "
+        "web_search for those). Prefer this alone unless the question explicitly also "
+        "needs live web facts."
     )
     args_schema: type[BaseModel] = _SearchInput
 

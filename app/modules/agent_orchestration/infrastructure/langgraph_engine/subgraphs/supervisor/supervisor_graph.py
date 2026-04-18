@@ -54,6 +54,7 @@ def build_supervisor_graph(
 
     graph.add_conditional_edges("delegate", route_to_human_review, {
         "human_review": "human_review",
+        "researcher": "researcher",
         "chat": "chat",
         "end": END,
     })
