@@ -38,4 +38,4 @@ def execute_agent_graph(
         return {"reply": messages[-1].content if messages else ""}
     except Exception as exc:
         logger.exception("Agent task failed")
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc

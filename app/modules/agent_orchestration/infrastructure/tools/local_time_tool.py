@@ -29,9 +29,9 @@ class _LocalTimeInput(BaseModel):
 
 @lru_cache(maxsize=1)
 def _timezone_finder() -> TimezoneFinder:
-    from timezonefinder import TimezoneFinder as _TF
+    from timezonefinder import TimezoneFinder as TimezoneFinderImpl
 
-    return _TF()
+    return TimezoneFinderImpl()
 
 
 class GetLocalTimeTool(ProjectBaseTool):
@@ -66,9 +66,7 @@ class GetLocalTimeTool(ProjectBaseTool):
             )
 
         if location is None:
-            return (
-                f"No coordinates found for {place!r}. Try a fuller address or add the country."
-            )
+            return f"No coordinates found for {place!r}. Try a fuller address or add the country."
 
         lat = float(location.latitude)
         lng = float(location.longitude)

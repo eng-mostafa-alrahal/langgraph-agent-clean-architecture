@@ -64,9 +64,11 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     DEFAULT_LLM_PROVIDER: Literal["openai", "anthropic", "gemini", "groq"] = "groq"
-    # Groq: gpt-oss is strong for reasoning/chat; many IDs still emit invalid <function=...> XML for bind_tools.
+    # Groq: gpt-oss is strong for reasoning/chat; many IDs still emit
+    # invalid <function=...> XML for bind_tools.
     DEFAULT_MODEL_NAME: str = "openai/gpt-oss-120b"
-    # Groq only: model for researcher plan_search (bind_tools). Llama 3.1 8B follows native tool_calls reliably.
+    # Groq-only model for researcher plan_search (bind_tools).
+    # Llama 3.1 8B follows native tool_calls reliably.
     # Empty = use DEFAULT_MODEL_NAME for tools too (may hit tool_use_failed on some models).
     GROQ_TOOL_CALLING_MODEL: str = "llama-3.1-8b-instant"
 
@@ -78,7 +80,8 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIMENSIONS: int = 1536
     PGVECTOR_COLLECTION: str = "knowledge_base"
-    # Enable when PostgreSQL has the pgvector extension (e.g. pgvector/pgvector Docker image). Off by default for plain local Postgres.
+    # Enable when PostgreSQL has pgvector extension support
+    # (e.g., pgvector/pgvector image). Off by default for local Postgres.
     PGVECTOR_ENABLED: bool = False
 
     # ── Observability ────────────────────────────────────────────

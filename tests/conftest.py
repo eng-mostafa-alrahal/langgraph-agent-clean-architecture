@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Any
-from uuid import UUID
 
 import pytest
 from httpx import ASGITransport, AsyncClient

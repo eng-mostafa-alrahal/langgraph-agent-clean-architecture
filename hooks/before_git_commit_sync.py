@@ -12,6 +12,8 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+import contextlib  # noqa: E402
+
 from hooks.shared import (  # noqa: E402
     project_root_from_env,
     write_requirements_from_pyproject,
@@ -35,10 +37,8 @@ def main() -> None:
         return
 
     root = project_root_from_env(fallback=_ROOT)
-    try:
+    with contextlib.suppress(OSError):
         write_requirements_from_pyproject(root)
-    except OSError:
-        pass
 
     print(json.dumps(allow), flush=True)
 

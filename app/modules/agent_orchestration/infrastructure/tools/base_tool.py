@@ -9,6 +9,7 @@ from typing import Any
 
 from langchain_core.tools import BaseTool as _LCBaseTool
 from pydantic import Field
+
 from app.core.observability.request_context import get_request_id
 
 logger = logging.getLogger(__name__)

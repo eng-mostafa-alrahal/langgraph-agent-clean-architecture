@@ -12,7 +12,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from hooks.shared import project_root_from_env, write_requirements_from_pyproject
+from hooks.shared import project_root_from_env, write_requirements_from_pyproject  # noqa: E402
 
 
 def main() -> None:

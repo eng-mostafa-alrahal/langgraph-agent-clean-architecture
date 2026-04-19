@@ -16,7 +16,9 @@ async def error_handler_node(state: dict[str, Any]) -> dict[str, Any]:
         logger.error("Agent graph error: %s", error)
         return {
             "messages": [
-                AIMessage(content="I encountered an issue processing your request. Please try again.")
+                AIMessage(
+                    content="I encountered an issue processing your request. Please try again."
+                )
             ],
             "error": None,
         }

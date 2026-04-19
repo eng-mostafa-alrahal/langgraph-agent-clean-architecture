@@ -42,10 +42,10 @@ from app.modules.agent_orchestration.infrastructure.langgraph_engine.memory.post
     ensure_checkpointer_ready,
     get_postgres_saver,
 )
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.error_handler_node import (
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.error_handler_node import (  # noqa: E501
     error_handler_node,
 )
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.supervisor.supervisor_graph import (
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.supervisor.supervisor_graph import (  # noqa: E501
     build_supervisor_graph,
 )
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.tool_partition import (
@@ -192,7 +192,10 @@ class MainGraphOrchestrator(IAgentOrchestrator):
                 total_ms = (now - started) * 1000
                 last_event_at = now
                 logger.info(
-                    "graph.stream event request_id=%s thread_id=%s idx=%d node=%s delta_ms=%.1f total_ms=%.1f",
+                    (
+                        "graph.stream event request_id=%s thread_id=%s idx=%d "
+                        "node=%s delta_ms=%.1f total_ms=%.1f"
+                    ),
                     get_request_id(),
                     session_id,
                     event_count,
@@ -242,7 +245,10 @@ class MainGraphOrchestrator(IAgentOrchestrator):
         result = await self._result_from(graph, config, state, thread_id=thread_id)
         elapsed_ms = (perf_counter() - started) * 1000
         logger.info(
-            "graph.resume completed request_id=%s thread_id=%s action=%s interrupted=%s elapsed_ms=%.1f",
+            (
+                "graph.resume completed request_id=%s thread_id=%s "
+                "action=%s interrupted=%s elapsed_ms=%.1f"
+            ),
             get_request_id(),
             thread_id,
             action,

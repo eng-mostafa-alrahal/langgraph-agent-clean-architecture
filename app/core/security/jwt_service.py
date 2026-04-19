@@ -42,10 +42,10 @@ def decode_token(token: str) -> dict[str, Any]:
     settings = get_settings()
     try:
         return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-    except jwt.ExpiredSignatureError:
-        raise TokenExpiredError()
-    except jwt.InvalidTokenError:
-        raise InvalidTokenError()
+    except jwt.ExpiredSignatureError as exc:
+        raise TokenExpiredError() from exc
+    except jwt.InvalidTokenError as exc:
+        raise InvalidTokenError() from exc
 
 
 def verify_access_token(token: str) -> UUID:

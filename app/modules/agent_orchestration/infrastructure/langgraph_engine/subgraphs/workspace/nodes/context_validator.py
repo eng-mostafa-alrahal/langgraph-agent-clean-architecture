@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.infrastructure.llm_gateways.structured_output import with_pydantic_output
 from app.modules.agent_orchestration.domain.schemas.research_decision import WorkspaceLoopDecision
 from app.modules.agent_orchestration.domain.states.researcher_state import ResearcherState
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.message_snippets import (
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.message_snippets import (  # noqa: E501
     recent_human_turns_as_text,
 )
 
@@ -25,11 +25,7 @@ def make_workspace_context_validator_node(llm: BaseChatModel):
                 "search_queries": ["Run the tools needed to address the user's request"],
             }
 
-        goal_section = (
-            f"User request (recent turns):\n{user_block}\n\n"
-            if user_block
-            else ""
-        )
+        goal_section = f"User request (recent turns):\n{user_block}\n\n" if user_block else ""
         prompt = (
             f"{goal_section}"
             f"Latest tool output from this subgraph:\n\n{chr(10).join(context)}\n\n"

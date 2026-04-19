@@ -103,7 +103,12 @@ class WorkspaceLoopDecision(BaseModel):
         if hints is None:
             hints = []
         if not hints:
-            for alt in ("search_queries", "follow_up_search_queries", "queries", "additional_search_queries"):
+            for alt in (
+                "search_queries",
+                "follow_up_search_queries",
+                "queries",
+                "additional_search_queries",
+            ):
                 raw = d.get(alt)
                 if raw:
                     d["follow_up_hints"] = list(raw) if isinstance(raw, list) else [str(raw)]
@@ -133,6 +138,4 @@ class DelegationDecision(BaseModel):
             "registered), 'chat', or 'end'."
         ),
     )
-    reasoning: str = Field(
-        ..., description="Brief justification for the delegation choice."
-    )
+    reasoning: str = Field(..., description="Brief justification for the delegation choice.")

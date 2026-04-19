@@ -20,7 +20,6 @@ from app.modules.agent_orchestration.application.dtos.agent_result import (
     MessageRole,
 )
 
-
 _TYPE_TO_ROLE: dict[str, MessageRole] = {
     "human": "human",
     "ai": "ai",
@@ -131,10 +130,7 @@ def snapshot_is_paused(snapshot: Any) -> bool:
     intr = getattr(snapshot, "interrupts", None) or ()
     if intr:
         return True
-    for task in getattr(snapshot, "tasks", None) or ():
-        if getattr(task, "interrupts", None):
-            return True
-    return False
+    return any(getattr(task, "interrupts", None) for task in getattr(snapshot, "tasks", None) or ())
 
 
 def _interrupt_payload(snapshot: Any) -> Any:
@@ -181,9 +177,7 @@ def to_agent_events(stream_chunk: Any) -> list[AgentEvent]:
                     messages = [to_agent_message(m) for m in value]
                 else:
                     updates[key] = _jsonify(value)
-            events.append(
-                AgentEvent(node=str(node_name), messages=messages, updates=updates)
-            )
+            events.append(AgentEvent(node=str(node_name), messages=messages, updates=updates))
         else:
             events.append(
                 AgentEvent(

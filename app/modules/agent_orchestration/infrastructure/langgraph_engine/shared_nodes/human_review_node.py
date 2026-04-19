@@ -24,13 +24,9 @@ def human_review_node(state: dict[str, Any]) -> dict[str, Any]:
     )
 
     action: str = (
-        decision.get("action", "rejected")
-        if isinstance(decision, dict)
-        else str(decision)
+        decision.get("action", "rejected") if isinstance(decision, dict) else str(decision)
     )
-    feedback: str | None = (
-        decision.get("feedback") if isinstance(decision, dict) else None
-    )
+    feedback: str | None = decision.get("feedback") if isinstance(decision, dict) else None
 
     updates: dict[str, Any] = {"human_feedback": action}
 

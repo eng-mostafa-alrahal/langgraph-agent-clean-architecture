@@ -20,7 +20,10 @@ def project_root_from_env(*, fallback: Path | None = None) -> Path:
 
 def find_venv_python(root: Path) -> Path | None:
     if sys.platform == "win32":
-        candidates = [root / ".venv" / "Scripts" / "python.exe", root / "venv" / "Scripts" / "python.exe"]
+        candidates = [
+            root / ".venv" / "Scripts" / "python.exe",
+            root / "venv" / "Scripts" / "python.exe",
+        ]
     else:
         candidates = [root / ".venv" / "bin" / "python", root / "venv" / "bin" / "python"]
     for p in candidates:

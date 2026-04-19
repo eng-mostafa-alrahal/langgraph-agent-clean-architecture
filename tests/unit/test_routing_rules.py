@@ -4,6 +4,9 @@ from app.modules.agent_orchestration.domain.routing_rules.approval_router import
     route_after_human_review,
     route_to_human_review,
 )
+from app.modules.agent_orchestration.domain.routing_rules.local_time_intent import (
+    looks_like_local_time_question,
+)
 from app.modules.agent_orchestration.domain.routing_rules.researcher_router import (
     route_researcher,
 )
@@ -65,3 +68,15 @@ def test_approval_after_human_review_returns_workspace_when_approved():
 def test_approval_after_human_review_normalizes_legacy_file_writer():
     state = {"human_feedback": "approved", "next_agent": "file_writer"}
     assert route_after_human_review(state) == "workspace"  # type: ignore[arg-type]
+
+
+def test_local_time_intent_matches_common_phrases():
+    assert looks_like_local_time_question("what is the current time in Tokyo")
+    assert looks_like_local_time_question("What's the time in London?")
+    assert looks_like_local_time_question("current time in Paris")
+    assert looks_like_local_time_question("local time in Austin, TX")
+
+
+def test_local_time_intent_avoids_false_positives():
+    assert not looks_like_local_time_question("closing time in Tokyo")
+    assert not looks_like_local_time_question("tell me about Tokyo")

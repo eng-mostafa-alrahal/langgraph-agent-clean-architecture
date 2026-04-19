@@ -17,10 +17,10 @@ from app.modules.agent_orchestration.domain.states.researcher_state import Resea
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.config.prompt_factory import (
     build_researcher_prompt,
 )
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.tool_error_handler import (
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.tool_error_handler import (  # noqa: E501
     researcher_tool_execution_error,
 )
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.researcher.nodes.context_validator import (
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.researcher.nodes.context_validator import (  # noqa: E501
     make_context_validator_node,
 )
 
@@ -51,13 +51,17 @@ def build_researcher_graph(
         chain = prompt | llm_with_tools
         base_messages = list(state["messages"])
         nudge = (
-            "Important: invoke tools only via native tool_calls from the API (including any MCP tools "
+            "Important: invoke tools only via native tool_calls from the API "
+            "(including any MCP tools "
             "prefixed like filesystem__…). "
-            "Do not write <function=...>, </function>, or any XML-style tool syntax — Groq rejects that."
+            "Do not write <function=...>, </function>, or any XML-style tool syntax "
+            "- Groq rejects that."
         )
         for attempt in range(2):
             try:
-                msgs = base_messages if attempt == 0 else [*base_messages, HumanMessage(content=nudge)]
+                msgs = (
+                    base_messages if attempt == 0 else [*base_messages, HumanMessage(content=nudge)]
+                )
                 response = await chain.ainvoke({"messages": msgs})
                 return {"messages": [response]}
             except Exception as exc:
@@ -85,13 +89,14 @@ def build_researcher_graph(
             )
         else:
             tail = (
-                "No tool results were returned this turn. Answer the user's question using the conversation "
-                "and your general knowledge. If the question depends on very recent facts you cannot know "
-                "for certain, give a careful answer and mention uncertainty briefly—do not refuse outright "
+                "No tool results were returned this turn. Answer using the conversation and "
+                "your general knowledge. If the question depends on very recent facts you cannot "
+                "know for certain, give a careful answer and mention uncertainty "
+                "briefly - do not refuse outright "
                 "unless you truly have no relevant information."
             )
-        # Pass the full thread so the model still sees the original user question (string-only invoke dropped it).
-        messages = list(state["messages"]) + [HumanMessage(content=tail)]
+        # Keep full thread so model still sees the original user question.
+        messages = [*list(state["messages"]), HumanMessage(content=tail)]
         response = await llm.ainvoke(messages)
         return {"messages": [AIMessage(content=str(response.content))]}
 
@@ -106,17 +111,25 @@ def build_researcher_graph(
 
     graph.set_entry_point("plan_search")
 
-    graph.add_conditional_edges("plan_search", _route_after_plan, {
-        "search": "search",
-        "synthesize": "synthesize",
-    })
+    graph.add_conditional_edges(
+        "plan_search",
+        _route_after_plan,
+        {
+            "search": "search",
+            "synthesize": "synthesize",
+        },
+    )
     graph.add_edge("search", "collect_context")
     graph.add_edge("collect_context", "validate_context")
-    graph.add_conditional_edges("validate_context", route_researcher, {
-        "search": "plan_search",
-        "synthesize": "synthesize",
-        "end": END,
-    })
+    graph.add_conditional_edges(
+        "validate_context",
+        route_researcher,
+        {
+            "search": "plan_search",
+            "synthesize": "synthesize",
+            "end": END,
+        },
+    )
     graph.add_edge("synthesize", END)
 
     return graph

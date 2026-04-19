@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 
 from app.core.config.settings import get_settings
 
@@ -28,12 +29,26 @@ def _quiet_noisy_loggers() -> None:
 def setup_observability() -> None:
     settings = get_settings()
     log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        force=True,
-    )
+    root_logger = logging.getLogger()
+    if not root_logger.handlers:
+        logging.basicConfig(
+            level=log_level,
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        )
+    else:
+        root_logger.setLevel(log_level)
     logging.getLogger("app").setLevel(log_level)
+    # Uvicorn installs access logs on stdout by default. Many debug sessions surface stderr
+    # more reliably — route access logs to stderr (single handler) for visibility.
+    access_logger = logging.getLogger("uvicorn.access")
+    access_logger.setLevel(logging.INFO)
+    access_logger.handlers.clear()
+    from uvicorn.logging import AccessFormatter
+
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setFormatter(AccessFormatter(use_colors=False))
+    access_logger.addHandler(stderr_handler)
+    access_logger.propagate = False
     _quiet_noisy_loggers()
     logging.getLogger(__name__).info(
         "Observability initialized level=%s", settings.LOG_LEVEL.upper()

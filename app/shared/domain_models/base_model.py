@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
 from app.shared.uuid_utils import uuid7
 
 

@@ -2,7 +2,7 @@
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.message_snippets import (
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.message_snippets import (  # noqa: E501
     recent_human_turns_as_text,
 )
 

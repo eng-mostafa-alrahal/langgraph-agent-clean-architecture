@@ -12,6 +12,8 @@ SUPERVISOR_SYSTEM_PROMPT_BASE = (
     "news, internal documents (RAG), local time in a city, or anything that requires "
     "web_search, rag_search, or get_local_time — not actions that depend on the "
     "extended tool integrations below.\n"
+    "Never choose 'chat' for questions like 'what time is it in …' or "
+    "'current/local time in …'; those always need the researcher (get_local_time).\n"
     "{workspace_instruction}"
     "Delegate to 'chat' only for casual conversation with no lookup requirement.\n"
     "If the task is complete, return 'end'.\n"
@@ -71,8 +73,7 @@ RESEARCHER_SYSTEM_PROMPT = (
 )
 
 CHAT_SYSTEM_PROMPT = (
-    "You are a helpful conversational assistant. Answer the user's question "
-    "directly and concisely."
+    "You are a helpful conversational assistant. Answer the user's question directly and concisely."
 )
 
 
@@ -87,28 +88,36 @@ def build_supervisor_prompt(*, include_workspace_agent: bool = True) -> ChatProm
             workspace_clause="",
             workspace_instruction="",
         )
-    return ChatPromptTemplate.from_messages([
-        ("system", system),
-        MessagesPlaceholder(variable_name="messages"),
-    ])
+    return ChatPromptTemplate.from_messages(
+        [
+            ("system", system),
+            MessagesPlaceholder(variable_name="messages"),
+        ]
+    )
 
 
 def build_researcher_prompt() -> ChatPromptTemplate:
-    return ChatPromptTemplate.from_messages([
-        ("system", RESEARCHER_SYSTEM_PROMPT),
-        MessagesPlaceholder(variable_name="messages"),
-    ])
+    return ChatPromptTemplate.from_messages(
+        [
+            ("system", RESEARCHER_SYSTEM_PROMPT),
+            MessagesPlaceholder(variable_name="messages"),
+        ]
+    )
 
 
 def build_workspace_prompt() -> ChatPromptTemplate:
-    return ChatPromptTemplate.from_messages([
-        ("system", WORKSPACE_AGENT_SYSTEM_PROMPT),
-        MessagesPlaceholder(variable_name="messages"),
-    ])
+    return ChatPromptTemplate.from_messages(
+        [
+            ("system", WORKSPACE_AGENT_SYSTEM_PROMPT),
+            MessagesPlaceholder(variable_name="messages"),
+        ]
+    )
 
 
 def build_chat_prompt() -> ChatPromptTemplate:
-    return ChatPromptTemplate.from_messages([
-        ("system", CHAT_SYSTEM_PROMPT),
-        MessagesPlaceholder(variable_name="messages"),
-    ])
+    return ChatPromptTemplate.from_messages(
+        [
+            ("system", CHAT_SYSTEM_PROMPT),
+            MessagesPlaceholder(variable_name="messages"),
+        ]
+    )

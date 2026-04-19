@@ -53,7 +53,10 @@ async def list_sessions(
     "/{session_id}",
     response_model=SessionResponse,
     summary="Get one session",
-    description="Fetch a specific session by ID. The session must belong to the authenticated user.",
+    description=(
+        "Fetch a specific session by ID. "
+        "The session must belong to the authenticated user."
+    ),
 )
 async def get_session(
     session_id: Annotated[

@@ -4,8 +4,8 @@ Uses ``AsyncPostgresSaver`` with a process-lifetime :class:`psycopg_pool.AsyncCo
 ``from_conn_string`` is an async context manager and cannot be stored as the saver; the pool
 pattern matches LangGraph's expected :class:`~langgraph.checkpoint.base.BaseCheckpointSaver` API.
 
-Call :func:`init_postgres_checkpoint_saver` during app startup and :func:`close_postgres_checkpoint_saver`
-on shutdown.
+Call :func:`init_postgres_checkpoint_saver` during app startup and
+:func:`close_postgres_checkpoint_saver` on shutdown.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ _saver: AsyncPostgresSaver | None = None
 
 
 def get_postgres_saver() -> AsyncPostgresSaver:
-    """Return the singleton saver after :func:`init_postgres_checkpoint_saver` or :func:`ensure_checkpointer_ready`."""
+    """Return singleton saver after init/ready helpers run."""
     if _saver is None:
         msg = (
             "Postgres checkpoint saver is not initialized. "
@@ -38,7 +38,7 @@ def get_postgres_saver() -> AsyncPostgresSaver:
 
 async def init_postgres_checkpoint_saver() -> None:
     """Open the pool, construct the saver, and run checkpoint table migrations."""
-    global _pool, _saver  # noqa: PLW0603
+    global _pool, _saver
 
     if _saver is not None:
         return
@@ -65,7 +65,7 @@ async def init_postgres_checkpoint_saver() -> None:
 
 async def close_postgres_checkpoint_saver() -> None:
     """Close the checkpoint connection pool."""
-    global _pool, _saver  # noqa: PLW0603
+    global _pool, _saver
 
     if _pool is not None:
         await _pool.close()

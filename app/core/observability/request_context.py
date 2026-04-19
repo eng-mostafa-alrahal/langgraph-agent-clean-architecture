@@ -13,4 +13,3 @@ def set_request_id(request_id: str) -> None:
 
 def get_request_id() -> str:
     return _request_id_ctx.get()
-

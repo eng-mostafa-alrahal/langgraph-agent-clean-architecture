@@ -10,7 +10,10 @@ router = APIRouter(tags=["Health"])
 @router.get(
     "/health",
     summary="Check API health",
-    description="Use this endpoint first to verify the API is reachable before testing authenticated flows.",
+    description=(
+        "Use this endpoint first to verify the API is reachable "
+        "before testing authenticated flows."
+    ),
 )
 async def healthcheck() -> dict[str, str]:
     settings = get_settings()

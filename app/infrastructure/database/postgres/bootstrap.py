@@ -29,14 +29,11 @@ def ensure_database_exists() -> None:
         raise ValueError("Database name is missing from DATABASE_URL configuration.")
 
     admin_dsn = admin_url.render_as_string(hide_password=False)
-    with psycopg.connect(admin_dsn, autocommit=True) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (database_name,))
-            if cur.fetchone() is not None:
-                logger.info("Database '%s' already exists", database_name)
-                return
+    with psycopg.connect(admin_dsn, autocommit=True) as conn, conn.cursor() as cur:
+        cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (database_name,))
+        if cur.fetchone() is not None:
+            logger.info("Database '%s' already exists", database_name)
+            return
 
-            cur.execute(
-                sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name))
-            )
-            logger.info("Created database '%s'", database_name)
+        cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name)))
+        logger.info("Created database '%s'", database_name)

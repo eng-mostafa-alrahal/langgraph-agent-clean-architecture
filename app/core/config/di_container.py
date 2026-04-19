@@ -34,19 +34,16 @@ class DIContainer:
     # ── Typed accessors for common services ──────────────────────
     @property
     def uow(self) -> SqlAlchemyUnitOfWork:
-        from app.infrastructure.database.postgres.unit_of_work import SqlAlchemyUnitOfWork
 
         return self.resolve("uow")  # type: ignore[return-value]
 
     @property
     def user_service(self) -> UserService:
-        from app.modules.users.use_cases.user_service import UserService  # noqa: F811
 
         return self.resolve("user_service")  # type: ignore[return-value]
 
     @property
     def session_service(self) -> SessionService:
-        from app.modules.sessions.use_cases.session_service import SessionService  # noqa: F811
 
         return self.resolve("session_service")  # type: ignore[return-value]
 

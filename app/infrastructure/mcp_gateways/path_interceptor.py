@@ -15,15 +15,17 @@ from app.core.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 
-_PATH_ARG_KEYS = frozenset({
-    "path",
-    "source",
-    "destination",
-    "from_path",
-    "to_path",
-    "old_path",
-    "new_path",
-})
+_PATH_ARG_KEYS = frozenset(
+    {
+        "path",
+        "source",
+        "destination",
+        "from_path",
+        "to_path",
+        "old_path",
+        "new_path",
+    }
+)
 
 
 def _absolute_under_sandbox(sandbox_root: Path, *relative_parts: str) -> str:

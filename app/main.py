@@ -125,9 +125,7 @@ def create_app() -> FastAPI:
 
     # ── Middleware ────────────────────────────────────────────────
     @app.middleware("http")
-    async def request_timing_middleware(
-        request: Request, call_next
-    ) -> Response:  # type: ignore[no-untyped-def]
+    async def request_timing_middleware(request: Request, call_next) -> Response:  # type: ignore[no-untyped-def]
         request_id = request.headers.get("x-request-id", str(uuid.uuid4()))
         set_request_id(request_id)
         started = perf_counter()

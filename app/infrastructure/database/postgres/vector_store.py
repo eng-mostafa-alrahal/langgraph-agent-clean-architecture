@@ -36,9 +36,7 @@ def build_pgvector_store() -> PGVector:
         connection=connection_string,
         use_jsonb=True,
     )
-    logger.info(
-        "PGVector store initialised (collection=%s)", settings.PGVECTOR_COLLECTION
-    )
+    logger.info("PGVector store initialised (collection=%s)", settings.PGVECTOR_COLLECTION)
     return store
 
 

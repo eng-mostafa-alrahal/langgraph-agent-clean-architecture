@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from langchain_core.language_models import BaseChatModel
 
 from app.infrastructure.llm_gateways.anthropic_service import build_anthropic_chat
@@ -12,7 +14,7 @@ from app.modules.agent_orchestration.application.ports.llm_registry_port import 
 
 
 class LLMRegistry(ILLMRegistry):
-    _builders: dict[str, object] = {
+    _builders: ClassVar[dict[str, object]] = {
         "openai": build_openai_chat,
         "anthropic": build_anthropic_chat,
         "gemini": build_google_chat,

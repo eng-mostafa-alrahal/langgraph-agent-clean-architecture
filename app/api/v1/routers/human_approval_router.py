@@ -56,7 +56,10 @@ async def resume_run(
     )
     elapsed_ms = (perf_counter() - started) * 1000
     logger.info(
-        "api.resume_run completed request_id=%s thread_id=%s action=%s interrupted=%s elapsed_ms=%.1f",
+        (
+            "api.resume_run completed request_id=%s thread_id=%s "
+            "action=%s interrupted=%s elapsed_ms=%.1f"
+        ),
         get_request_id(),
         thread_id,
         body.action,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 def format_agent_execution_detail(exc: BaseException) -> str:
     """Return a human-readable detail string, appending nested provider payloads when present."""
     base = str(exc).strip()

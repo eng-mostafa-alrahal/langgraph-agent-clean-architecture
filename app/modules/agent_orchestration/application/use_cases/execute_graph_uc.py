@@ -43,6 +43,9 @@ class ExecuteGraphUseCase:
                 )
             ):
                 raise RateLimitExceededError(
-                    detail="LLM provider quota or rate limit exceeded. Please retry later or update provider limits."
+                    detail=(
+                        "LLM provider quota or rate limit exceeded. "
+                        "Please retry later or update provider limits."
+                    )
                 ) from exc
             raise AgentExecutionError(detail=format_agent_execution_detail(exc)) from exc

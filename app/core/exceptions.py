@@ -8,7 +8,7 @@ from __future__ import annotations
 
 
 # ── Base ─────────────────────────────────────────────────────────
-class AppException(Exception):
+class AppException(Exception):  # noqa: N818
     """Root for every custom exception in the system."""
 
     code: str = "APP_ERROR"
@@ -63,7 +63,9 @@ class NotFoundError(AppException):
     status_code = 404
 
     def __init__(self, resource: str = "Resource", identifier: str = "") -> None:
-        msg = f"{resource} not found." if not identifier else f"{resource} '{identifier}' not found."
+        msg = (
+            f"{resource} not found." if not identifier else f"{resource} '{identifier}' not found."
+        )
         super().__init__(msg)
 
 

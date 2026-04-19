@@ -19,8 +19,8 @@ from app.api.dependencies import (
     get_execute_graph_uc,
     get_stream_graph_events_uc,
 )
-from app.core.observability.request_context import get_request_id
 from app.api.v1.schemas.chat_schema import ChatRequest, ChatResponse
+from app.core.observability.request_context import get_request_id
 from app.modules.agent_orchestration.application.dtos.agent_result import (
     AgentEvent,
     AgentMessage,
@@ -152,7 +152,10 @@ async def chat_stream(
             yield f"data: {json.dumps(payload, ensure_ascii=False, default=str)}\n\n"
         elapsed_ms = (perf_counter() - started) * 1000
         logger.info(
-            "api.chat_stream completed request_id=%s session_id=%s detail=%s chunks=%d elapsed_ms=%.1f",
+            (
+                "api.chat_stream completed request_id=%s session_id=%s "
+                "detail=%s chunks=%d elapsed_ms=%.1f"
+            ),
             get_request_id(),
             body.session_id,
             detail,

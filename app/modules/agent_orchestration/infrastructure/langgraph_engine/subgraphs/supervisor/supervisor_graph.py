@@ -14,16 +14,16 @@ from app.modules.agent_orchestration.domain.states.supervisor_state import Super
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.chat_node import (
     make_chat_node,
 )
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.human_review_node import (
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.human_review_node import (  # noqa: E501
     human_review_node,
 )
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.researcher.researcher_graph import (
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.researcher.researcher_graph import (  # noqa: E501
     build_researcher_graph,
 )
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.supervisor.nodes.task_delegator import (
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.supervisor.nodes.task_delegator import (  # noqa: E501
     make_task_delegator_node,
 )
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.workspace.workspace_graph import (
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.workspace.workspace_graph import (  # noqa: E501
     build_workspace_graph,
 )
 
@@ -52,18 +52,26 @@ def build_supervisor_graph(
 
     graph.set_entry_point("delegate")
 
-    graph.add_conditional_edges("delegate", route_to_human_review, {
-        "human_review": "human_review",
-        "researcher": "researcher",
-        "chat": "chat",
-        "end": END,
-    })
-    graph.add_conditional_edges("human_review", route_after_human_review, {
-        "researcher": "researcher",
-        "workspace": "workspace",
-        "chat": "chat",
-        "end": END,
-    })
+    graph.add_conditional_edges(
+        "delegate",
+        route_to_human_review,
+        {
+            "human_review": "human_review",
+            "researcher": "researcher",
+            "chat": "chat",
+            "end": END,
+        },
+    )
+    graph.add_conditional_edges(
+        "human_review",
+        route_after_human_review,
+        {
+            "researcher": "researcher",
+            "workspace": "workspace",
+            "chat": "chat",
+            "end": END,
+        },
+    )
 
     graph.add_edge("researcher", END)
     graph.add_edge("workspace", END)

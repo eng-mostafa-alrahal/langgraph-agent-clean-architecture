@@ -11,6 +11,8 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+import contextlib  # noqa: E402
+
 from hooks.shared import (  # noqa: E402
     ensure_git_hooks_configured,
     find_venv_python,
@@ -20,10 +22,8 @@ from hooks.shared import (  # noqa: E402
 
 
 def main() -> None:
-    try:
+    with contextlib.suppress(Exception):
         sys.stdin.read()
-    except Exception:
-        pass
 
     root = project_root_from_env(fallback=_ROOT)
     ensure_git_hooks_configured(root)
