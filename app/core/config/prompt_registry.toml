@@ -1,0 +1,9 @@
+# Maps PromptIntent enum values (string) to paths under PROMPT_ASSETS_DIR.
+[intents]
+supervisor_routing = "supervisor/supervisor_routing_v1.md.jinja"
+researcher_agent = "researcher/researcher_agent_v1.md.jinja"
+workspace_agent = "workspace/workspace_agent_v1.md.jinja"
+chat_agent = "chat/chat_agent_v1.md.jinja"
+structured_output_system = "shared/structured_output_system_v1.md.jinja"
+researcher_context_validation = "researcher/context_validation_v1.md.jinja"
+workspace_context_validation = "workspace/context_validation_v1.md.jinja"

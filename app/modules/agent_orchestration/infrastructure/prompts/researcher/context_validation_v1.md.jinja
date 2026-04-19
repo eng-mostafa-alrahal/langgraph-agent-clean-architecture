@@ -1,0 +1,22 @@
+---
+version: "1.2"
+model_target: structured-output
+trace_tags:
+  agent: researcher
+  prompt_key: context_validation
+---
+{{ goal_section }}Here’s what came back from the tools in this pass:
+
+{{ retrieved_evidence }}
+
+Does this actually answer what they’re asking? (Use the user bit above if it’s there.)
+
+If you’re pretty sure you need another retrieval pass, set needs_more_research=true and suggest tight follow-up search_queries.
+
+If you’re good to go—or this kind of evidence just won’t fix the question—set needs_more_research=false.
+
+Your JSON needs to match this shape:
+
+{{ compact_schema }}
+
+One JSON object only—no markdown fences, no XML.

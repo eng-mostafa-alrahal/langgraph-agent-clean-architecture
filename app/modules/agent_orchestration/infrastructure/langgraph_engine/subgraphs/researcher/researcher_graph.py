@@ -10,12 +10,18 @@ from langchain_core.tools import BaseTool
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
 
+from app.modules.agent_orchestration.application.ports.prompt_provider_port import IPromptProvider
+from app.modules.agent_orchestration.domain.prompts.context import PromptContext
+from app.modules.agent_orchestration.domain.prompts.intent import PromptIntent
 from app.modules.agent_orchestration.domain.routing_rules.researcher_router import (
     route_researcher,
 )
 from app.modules.agent_orchestration.domain.states.researcher_state import ResearcherState
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.config.prompt_factory import (
-    build_researcher_prompt,
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.mappers.prompt_mapper import (
+    to_chat_prompt_template,
+)
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.prompt_trace_config import (
+    trace_run_config_from_metadata,
 )
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.tool_error_handler import (  # noqa: E501
     researcher_tool_execution_error,
@@ -43,9 +49,19 @@ def _route_after_plan(state: ResearcherState) -> str:
 def build_researcher_graph(
     llm: BaseChatModel,
     tools: list[BaseTool],
+    *,
+    prompt_provider: IPromptProvider,
 ) -> StateGraph:
     llm_with_tools = llm.bind_tools(tools)
-    prompt = build_researcher_prompt()
+    rendered = prompt_provider.resolve_prompt(PromptIntent.RESEARCHER_AGENT, PromptContext())
+    prompt = to_chat_prompt_template(rendered)
+    trace_cfg = trace_run_config_from_metadata(rendered.metadata)
+    logger.info(
+        "researcher_prompt_loaded intent=%s version=%s asset=%s",
+        rendered.metadata.get("intent"),
+        rendered.metadata.get("version"),
+        rendered.metadata.get("asset_path"),
+    )
 
     async def plan_search(state: ResearcherState) -> dict:
         chain = prompt | llm_with_tools
@@ -62,7 +78,7 @@ def build_researcher_graph(
                 msgs = (
                     base_messages if attempt == 0 else [*base_messages, HumanMessage(content=nudge)]
                 )
-                response = await chain.ainvoke({"messages": msgs})
+                response = await chain.ainvoke({"messages": msgs}, config=trace_cfg)
                 return {"messages": [response]}
             except Exception as exc:
                 if attempt == 0 and _is_groq_tool_invocation_format_error(exc):
@@ -84,16 +100,16 @@ def build_researcher_graph(
         context = state.get("retrieved_context", [])
         if context:
             tail = (
-                f"Based on the following research:\n\n{chr(10).join(context)}\n\n"
-                "Provide a comprehensive, well-structured answer to the user's question."
+                f"Here's what you pulled:\n\n{chr(10).join(context)}\n\n"
+                "Reply to the user now. Keep it short (a few sentences unless they asked "
+                "for detail). Sound like a person texting: warm, plain words, no lecture "
+                "tone or numbered report. Lead with the answer; skip 'As an AI...' intros."
             )
         else:
             tail = (
-                "No tool results were returned this turn. Answer using the conversation and "
-                "your general knowledge. If the question depends on very recent facts you cannot "
-                "know for certain, give a careful answer and mention uncertainty "
-                "briefly - do not refuse outright "
-                "unless you truly have no relevant information."
+                "No tool output this round—answer from the chat and general knowledge. "
+                "Stay brief and friendly. If something needs fresh facts you don't have, "
+                "say so in one short line."
             )
         # Keep full thread so model still sees the original user question.
         messages = [*list(state["messages"]), HumanMessage(content=tail)]
@@ -106,7 +122,10 @@ def build_researcher_graph(
     graph.add_node("plan_search", plan_search)
     graph.add_node("search", tool_node)
     graph.add_node("collect_context", collect_context)
-    graph.add_node("validate_context", make_context_validator_node(llm))
+    graph.add_node(
+        "validate_context",
+        make_context_validator_node(llm, prompt_provider=prompt_provider),
+    )
     graph.add_node("synthesize", synthesize)
 
     graph.set_entry_point("plan_search")

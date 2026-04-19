@@ -17,7 +17,7 @@ async def error_handler_node(state: dict[str, Any]) -> dict[str, Any]:
         return {
             "messages": [
                 AIMessage(
-                    content="I encountered an issue processing your request. Please try again."
+                    content="Something glitched on our side—mind trying once more?"
                 )
             ],
             "error": None,

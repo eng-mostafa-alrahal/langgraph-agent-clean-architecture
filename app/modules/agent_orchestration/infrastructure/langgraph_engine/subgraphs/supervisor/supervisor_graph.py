@@ -6,6 +6,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langgraph.graph import END, StateGraph
 
+from app.modules.agent_orchestration.application.ports.prompt_provider_port import IPromptProvider
 from app.modules.agent_orchestration.domain.routing_rules.approval_router import (
     route_after_human_review,
     route_to_human_review,
@@ -33,22 +34,35 @@ def build_supervisor_graph(
     research_tools: list[BaseTool],
     workspace_tools: list[BaseTool],
     *,
+    prompt_provider: IPromptProvider,
     researcher_llm: BaseChatModel | None = None,
 ) -> StateGraph:
     tool_llm = researcher_llm if researcher_llm is not None else llm
     include_workspace_agent = len(workspace_tools) > 0
-    researcher_subgraph = build_researcher_graph(tool_llm, research_tools).compile()
-    workspace_subgraph = build_workspace_graph(tool_llm, workspace_tools).compile()
+    researcher_subgraph = build_researcher_graph(
+        tool_llm,
+        research_tools,
+        prompt_provider=prompt_provider,
+    ).compile()
+    workspace_subgraph = build_workspace_graph(
+        tool_llm,
+        workspace_tools,
+        prompt_provider=prompt_provider,
+    ).compile()
 
     graph = StateGraph(SupervisorState)
     graph.add_node(
         "delegate",
-        make_task_delegator_node(llm, include_workspace_agent=include_workspace_agent),
+        make_task_delegator_node(
+            llm,
+            prompt_provider=prompt_provider,
+            include_workspace_agent=include_workspace_agent,
+        ),
     )
     graph.add_node("human_review", human_review_node)
     graph.add_node("researcher", researcher_subgraph)
     graph.add_node("workspace", workspace_subgraph)
-    graph.add_node("chat", make_chat_node(llm))
+    graph.add_node("chat", make_chat_node(llm, prompt_provider=prompt_provider))
 
     graph.set_entry_point("delegate")
 

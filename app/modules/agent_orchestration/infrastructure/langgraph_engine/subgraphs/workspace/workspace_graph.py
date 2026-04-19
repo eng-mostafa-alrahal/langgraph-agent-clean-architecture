@@ -10,12 +10,18 @@ from langchain_core.tools import BaseTool
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
 
+from app.modules.agent_orchestration.application.ports.prompt_provider_port import IPromptProvider
+from app.modules.agent_orchestration.domain.prompts.context import PromptContext
+from app.modules.agent_orchestration.domain.prompts.intent import PromptIntent
 from app.modules.agent_orchestration.domain.routing_rules.researcher_router import (
     route_researcher,
 )
 from app.modules.agent_orchestration.domain.states.researcher_state import ResearcherState
-from app.modules.agent_orchestration.infrastructure.langgraph_engine.config.prompt_factory import (
-    build_workspace_prompt,
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.mappers.prompt_mapper import (
+    to_chat_prompt_template,
+)
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.prompt_trace_config import (
+    trace_run_config_from_metadata,
 )
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.tool_error_handler import (  # noqa: E501
     researcher_tool_execution_error,
@@ -42,9 +48,19 @@ def _route_after_plan(state: ResearcherState) -> str:
 def build_workspace_graph(
     llm: BaseChatModel,
     tools: list[BaseTool],
+    *,
+    prompt_provider: IPromptProvider,
 ) -> StateGraph:
     llm_with_tools = llm.bind_tools(tools)
-    prompt = build_workspace_prompt()
+    rendered = prompt_provider.resolve_prompt(PromptIntent.WORKSPACE_AGENT, PromptContext())
+    prompt = to_chat_prompt_template(rendered)
+    trace_cfg = trace_run_config_from_metadata(rendered.metadata)
+    logger.info(
+        "workspace_prompt_loaded intent=%s version=%s asset=%s",
+        rendered.metadata.get("intent"),
+        rendered.metadata.get("version"),
+        rendered.metadata.get("asset_path"),
+    )
 
     async def plan_tools(state: ResearcherState) -> dict:
         chain = prompt | llm_with_tools
@@ -60,7 +76,7 @@ def build_workspace_graph(
                 msgs = (
                     base_messages if attempt == 0 else [*base_messages, HumanMessage(content=nudge)]
                 )
-                response = await chain.ainvoke({"messages": msgs})
+                response = await chain.ainvoke({"messages": msgs}, config=trace_cfg)
                 return {"messages": [response]}
             except Exception as exc:
                 if attempt == 0 and _is_groq_tool_invocation_format_error(exc):
@@ -81,16 +97,15 @@ def build_workspace_graph(
         context = state.get("retrieved_context", [])
         if context:
             tail = (
-                "Summarize what was accomplished using tools and any important "
-                "results or errors:\n\n"
-                f"{chr(10).join(context)}\n\n"
-                "Include concrete details the user asked for "
-                "(paths, IDs, counts, etc.) when relevant."
+                f"Tool output for this step:\n\n{chr(10).join(context)}\n\n"
+                "Tell the user what happened in a short, friendly message (like you're "
+                "catching them up). Include specifics they care about "
+                "(paths, errors, counts) without dumping a formal report."
             )
         else:
             tail = (
-                "No tool results were returned this turn. Explain briefly that the requested "
-                "actions could not be run (or no tools were invoked) and suggest clear next steps."
+                "Nothing came back from tools this time. Tell them in one or two warm "
+                "sentences and suggest what they could try next — no robotic disclaimer."
             )
         messages = [*list(state["messages"]), HumanMessage(content=tail)]
         response = await llm.ainvoke(messages)
@@ -102,7 +117,10 @@ def build_workspace_graph(
     graph.add_node("plan_tools", plan_tools)
     graph.add_node("tools", tool_node)
     graph.add_node("collect_context", collect_context)
-    graph.add_node("validate_context", make_workspace_context_validator_node(llm))
+    graph.add_node(
+        "validate_context",
+        make_workspace_context_validator_node(llm, prompt_provider=prompt_provider),
+    )
     graph.add_node("synthesize", synthesize)
 
     graph.set_entry_point("plan_tools")

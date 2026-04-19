@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Literal
 
 from pydantic import AliasChoices, Field, field_validator
@@ -92,6 +93,10 @@ class Settings(BaseSettings):
     # ── MCP (Model Context Protocol) ────────────────────────────
     MCP_SERVERS: list[MCPServerSpec] = Field(default_factory=list)
 
+    # ── Prompt assets (resolved under app/) ─────────────────────
+    PROMPT_ASSETS_DIR: str | None = None
+    PROMPT_REGISTRY_PATH: str | None = None
+
     # ── Celery ───────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
@@ -165,6 +170,25 @@ class Settings(BaseSettings):
             f"{scheme}://{self.REDIS_USER_NAME}:{self.REDIS_PASSWORD}"
             f"@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         )
+
+    def resolve_prompt_assets_dir(self) -> Path:
+        """Directory containing intent subfolders (supervisor/, …). Injectable for Docker."""
+        if self.PROMPT_ASSETS_DIR:
+            return Path(self.PROMPT_ASSETS_DIR).expanduser().resolve()
+        root = Path(__file__).resolve().parent.parent.parent
+        return (
+            root
+            / "modules"
+            / "agent_orchestration"
+            / "infrastructure"
+            / "prompts"
+        ).resolve()
+
+    def resolve_prompt_registry_path(self) -> Path:
+        """TOML file mapping prompt intent keys to paths under ``PROMPT_ASSETS_DIR``."""
+        if self.PROMPT_REGISTRY_PATH:
+            return Path(self.PROMPT_REGISTRY_PATH).expanduser().resolve()
+        return (Path(__file__).resolve().parent / "prompt_registry.toml").resolve()
 
 
 def get_settings() -> Settings:

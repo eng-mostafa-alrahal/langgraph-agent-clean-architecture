@@ -1,0 +1,24 @@
+---
+version: "1.2"
+model_target: structured-output
+trace_tags:
+  agent: workspace
+  prompt_key: context_validation
+---
+{{ goal_section }}Here’s the latest tool output from this stretch:
+
+{{ retrieved_evidence }}
+
+From that: are they basically done, or do you honestly need another round of tools?
+
+Set needs_more_tool_calls=true when it’s obvious more runs would help—like you still need a read you didn’t get, a write failed, you should list before you delete, you need to double-check something, etc.
+
+Set needs_more_tool_calls=false when you’re satisfied, or it’s clearly stuck but explained, or more tools wouldn’t really change anything.
+
+If you need another round, keep follow_up_hints short and practical—little nudges for what to try next, not pasted tool XML.
+
+Your JSON should line up with:
+
+{{ compact_schema }}
+
+Single JSON object only—no markdown, no XML.

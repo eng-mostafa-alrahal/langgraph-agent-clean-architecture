@@ -2,18 +2,29 @@
 
 from __future__ import annotations
 
+import logging
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.infrastructure.llm_gateways.structured_output import with_pydantic_output
+from app.modules.agent_orchestration.application.ports.prompt_provider_port import IPromptProvider
+from app.modules.agent_orchestration.domain.prompts.context import PromptContext
+from app.modules.agent_orchestration.domain.prompts.intent import PromptIntent
+from app.modules.agent_orchestration.domain.prompts.schema_compact import compact_schema_for_llm
 from app.modules.agent_orchestration.domain.schemas.research_decision import WorkspaceLoopDecision
 from app.modules.agent_orchestration.domain.states.researcher_state import ResearcherState
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.prompt_trace_config import (
+    trace_config_for_structured_pair,
+)
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.message_snippets import (  # noqa: E501
     recent_human_turns_as_text,
 )
 
+logger = logging.getLogger(__name__)
 
-def make_workspace_context_validator_node(llm: BaseChatModel):
+
+def make_workspace_context_validator_node(llm: BaseChatModel, *, prompt_provider: IPromptProvider):
     structured_llm = with_pydantic_output(llm, WorkspaceLoopDecision)
 
     async def context_validator(state: ResearcherState) -> dict:
@@ -26,24 +37,37 @@ def make_workspace_context_validator_node(llm: BaseChatModel):
             }
 
         goal_section = f"User request (recent turns):\n{user_block}\n\n" if user_block else ""
-        prompt = (
-            f"{goal_section}"
-            f"Latest tool output from this subgraph:\n\n{chr(10).join(context)}\n\n"
-            "Decide if the user's goal is fully satisfied by what these tools produced, "
-            "or if another round of tool calls is needed.\n"
-            "Set needs_more_tool_calls=true only when more tool execution is clearly required "
-            "(missing read, failed write, need to list before delete, verify a result, etc.).\n"
-            "If the user only wanted research/chat, or the task is done or blocked with a clear "
-            "message, set needs_more_tool_calls=false.\n"
-            "When more tools are needed, put short follow_up_hints (not full tool XML) — "
-            "each hint guides the next planning step.\n"
-            "Reply with a single json object only (no XML or markdown)."
+
+        system_rendered = prompt_provider.resolve_prompt(
+            PromptIntent.STRUCTURED_OUTPUT_SYSTEM,
+            PromptContext(),
         )
+        human_rendered = prompt_provider.resolve_prompt(
+            PromptIntent.WORKSPACE_CONTEXT_VALIDATION,
+            PromptContext(
+                goal_section=goal_section,
+                retrieved_evidence=chr(10).join(context),
+                compact_schema=compact_schema_for_llm(WorkspaceLoopDecision),
+            ),
+        )
+
+        trace_cfg = trace_config_for_structured_pair(
+            system_rendered.metadata,
+            human_rendered.metadata,
+        )
+
+        logger.info(
+            "workspace_context_validation_prompt system=%s human=%s",
+            system_rendered.metadata.get("asset_path"),
+            human_rendered.metadata.get("asset_path"),
+        )
+
         decision: WorkspaceLoopDecision = await structured_llm.ainvoke(
             [
-                SystemMessage(content="You output structured answers as json."),
-                HumanMessage(content=prompt),
-            ]
+                SystemMessage(content=system_rendered.content),
+                HumanMessage(content=human_rendered.content),
+            ],
+            config=trace_cfg,
         )  # type: ignore[assignment]
         hints = decision.follow_up_hints or []
         return {

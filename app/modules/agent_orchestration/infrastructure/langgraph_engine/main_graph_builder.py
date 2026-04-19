@@ -51,6 +51,9 @@ from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.s
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.tool_partition import (
     partition_tools_for_agents,
 )
+from app.modules.agent_orchestration.infrastructure.registries.file_prompt_registry import (
+    FilePromptRegistry,
+)
 
 logger = logging.getLogger(__name__)
 SLOW_STEP_MS = 3_000.0
@@ -89,10 +92,16 @@ class MainGraphOrchestrator(IAgentOrchestrator):
             all_tools = self._tool_registry.get_tools(self._tool_registry.list_available())
             research_tools, workspace_tools = partition_tools_for_agents(all_tools)
 
+            prompt_provider = FilePromptRegistry(
+                assets_dir=settings.resolve_prompt_assets_dir(),
+                registry_path=settings.resolve_prompt_registry_path(),
+            )
+
             supervisor_subgraph = build_supervisor_graph(
                 llm,
                 research_tools,
                 workspace_tools,
+                prompt_provider=prompt_provider,
                 researcher_llm=researcher_llm,
             ).compile()
 
