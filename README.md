@@ -1,47 +1,68 @@
-# LangGraph Agent — Clean Architecture
+# LangGraph Agent - Clean Architecture
 
-Production-ready AI agent system combining **Clean Architecture** principles with **LangGraph** for sophisticated multi-agent orchestration.
+Production-oriented FastAPI + LangGraph backend structured with Clean Architecture and vertical modules.  
+The system provides authenticated chat sessions, agent orchestration, optional human-in-the-loop approval, and pluggable tools (built-in + MCP).
+
+## What This Project Includes
+
+- FastAPI API under `/api/v1` with auth, user, session, chat, and run-state endpoints
+- LangGraph-based orchestrator in `app/modules/agent_orchestration`
+- SQLAlchemy async persistence (PostgreSQL), Alembic migrations, Redis, JWT auth
+- Optional Celery worker path for deferred/background graph execution
+- MCP tool bootstrap at app startup with tool collision protection
+- Unit/integration test suite and CI-friendly local scripts
 
 ## Architecture Overview
 
-```
+```text
 app/
-├── core/              Cross-cutting concerns (config, security, exceptions, observability)
-├── shared/            Enterprise kernel (domain models, port interfaces)
+├── api/               HTTP delivery layer (routers, request/response schemas, dependencies)
+├── core/              Global config, exceptions, security, observability, DI setup
+├── infrastructure/    Shared adapters (database, cache, LLM/MCP gateways)
 ├── modules/
-│   ├── users/         User management (register, login, profile)
-│   ├── sessions/      Chat session lifecycle
-│   └── agent_orchestration/
-│       ├── domain/          Pure state schemas, routing rules, structured outputs
-│       ├── application/     Use-cases & port interfaces (LLM registry, tool registry)
-│       └── infrastructure/  LangGraph engine, sub-graphs, registries, tools
-├── infrastructure/    Global adapters (PostgreSQL, Redis, LLM gateways)
-└── api/               FastAPI presentation layer (routers, schemas, dependencies)
+│   ├── users/                 User use-cases + domain logic
+│   ├── sessions/              Session lifecycle use-cases
+│   └── agent_orchestration/   LangGraph domain/application/infrastructure layers
+└── shared/            Cross-module domain primitives and port contracts
+
+workers/               Celery app and background task entrypoints
+alembic/               Database migrations
+hooks/                 Git hook scripts
+scripts/               Developer startup and dependency sync scripts
+tests/                 Unit, integration, and e2e tests
 ```
+
+## Request Flow (High Level)
+
+1. API router validates request DTOs.
+2. FastAPI dependencies resolve use-cases and current user from JWT bearer token.
+3. Use-case invokes the orchestrator or service layer through ports.
+4. Infrastructure adapters execute DB, tool, LLM, and MCP interactions.
+5. Response DTO is returned (or SSE stream for `/chat/stream`).
 
 ## Tech Stack
 
-| Layer | Technology |
+| Area | Main Libraries |
 |---|---|
-| Web framework | FastAPI + Uvicorn |
-| Agent framework | LangGraph + LangChain |
-| Database | PostgreSQL (async via SQLAlchemy 2.0 + asyncpg) |
-| Migrations | Alembic |
-| Cache / Pub-Sub | Redis |
-| Auth | JWT (PyJWT + passlib/bcrypt) |
-| Background tasks | Celery |
-| Observability | OpenTelemetry + LangSmith |
-| Package manager | uv |
+| API | FastAPI, Uvicorn |
+| Agent orchestration | LangGraph, LangChain Core |
+| LLM providers | OpenAI, Anthropic, Gemini adapters |
+| Persistence | SQLAlchemy 2.0 (async), asyncpg, Alembic |
+| Search/RAG extras | pgvector, langchain-postgres, Tavily |
+| Auth | PyJWT, passlib/bcrypt |
+| Caching/queue | Redis, Celery |
+| Observability | OpenTelemetry, LangSmith |
+| Tooling | uv, pytest, ruff, mypy |
 
 ## Quick Start
 
-### 1. Infrastructure
+### 1) Start infrastructure
 
 ```bash
 docker-compose up -d postgres redis
 ```
 
-### 2. Virtual Environment
+### 2) Create + activate virtual env
 
 ```bash
 uv venv .venv
@@ -51,26 +72,27 @@ uv venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install Dependencies
+### 3) Install dependencies
 
 ```bash
-uv pip install -e ".[dev]"
+uv sync --extra dev
 ```
 
-### 4. Environment Variables
+### 4) Configure environment
 
 ```bash
-cp .env .env.local   # edit .env with your keys
+cp .env.example .env
 ```
 
-### 5. Database Migrations
+Edit `.env` and set secrets/keys as needed.
+
+### 5) Apply migrations
 
 ```bash
-alembic revision --autogenerate -m "initial"
 alembic upgrade head
 ```
 
-### 6. Run the Server
+### 6) Run API server
 
 ```bash
 # Windows (PowerShell)
@@ -80,59 +102,111 @@ alembic upgrade head
 ./scripts/dev.sh
 ```
 
-Auto-run on workspace open is configured via `.vscode/tasks.json` (`runOn: folderOpen`) and runs dependency sync only (`scripts/sync_deps.ps1` or `scripts/sync_deps.sh`).
+OpenAPI docs: `http://localhost:8000/docs`
 
-API docs available at: `http://localhost:8000/docs`
-
-### 7. Run Tests
+### 7) Run tests
 
 ```bash
-pytest tests/unit -v
+pytest -v
 ```
 
-### 8. Celery Worker (optional)
+### 8) Optional: start Celery worker
 
 ```bash
-celery -A workers.celery_app worker --loglevel=info
+celery -A workers.celery_app worker --loglevel=info --concurrency=2
 ```
 
-## Git Hooks (VS Code + Cursor)
+## API Surface
 
-This repo uses a Git `pre-commit` hook in `hooks/pre-commit` to:
-- sync/install dependencies with `uv` (`uv sync --extra dev`, or `--frozen` when `uv.lock` exists)
-- keep `requirements.txt` synced from `pyproject.toml` before each commit
+All routes are prefixed with `/api/v1`.
 
-All hook scripts live in `hooks/`, and automation is Git-based (editor-agnostic).
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Health check and service metadata |
+| `POST` | `/auth/register` | Register account |
+| `POST` | `/auth/login` | Login and obtain access/refresh tokens |
+| `POST` | `/auth/refresh` | Rotate refresh token and issue new pair |
+| `GET` | `/auth/me` | Current authenticated profile |
+| `GET` | `/users/` | List users (current-user scoped behavior) |
+| `GET` | `/users/{user_id}` | Fetch one user |
+| `PATCH` | `/users/{user_id}` | Update one user |
+| `DELETE` | `/users/{user_id}` | Delete one user |
+| `POST` | `/sessions/` | Create chat session |
+| `GET` | `/sessions/` | List sessions |
+| `GET` | `/sessions/{session_id}` | Get session details |
+| `PATCH` | `/sessions/{session_id}` | Rename session |
+| `DELETE` | `/sessions/{session_id}` | Delete session |
+| `POST` | `/chat/` | Single-response chat invocation |
+| `POST` | `/chat/stream` | SSE chat stream (`[DONE]` terminated) |
+| `POST` | `/runs/{thread_id}/resume` | Resume interrupted run (human approval) |
+| `GET` | `/runs/{thread_id}/state` | Inspect run state |
 
-Set the hooks path once per clone:
+## Authentication Notes
+
+- Use `Authorization: Bearer <access_token>` for protected routes.
+- `GET /auth/me` is the quickest token validity check.
+- User mutation endpoints enforce self-access constraints in the router layer.
+
+## Configuration Reference
+
+Primary config lives in `app/core/config/settings.py` and is loaded from `.env`.  
+This project intentionally prefers `.env` values over stale process-level environment values.
+
+### Important environment variables
+
+- **App/runtime:** `APP_NAME`, `ENVIRONMENT`, `DEBUG`, `LOG_LEVEL`
+- **Server:** `HOST`, `PORT`, `WORKERS`
+- **Database:** `DATABASE_*`, `DATABASE_URL`, pool tuning vars
+- **Redis/Celery:** `REDIS_*`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`
+- **Auth:** `JWT_SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS`
+- **LLM:** `DEFAULT_LLM_PROVIDER`, `DEFAULT_MODEL_NAME`, provider API keys
+- **Agent limits:** `AGENT_MAX_CONTEXT_TOKENS`, `MAX_TOOL_OUTPUT_CHARS`, memory-summary vars
+- **Research:** `TAVILY_API_KEY`, `PGVECTOR_ENABLED`, embedding/vector vars
+- **MCP:** `MCP_SERVERS` (JSON array of server specs)
+
+## MCP Integration
+
+MCP tools are discovered at startup and injected into the shared tool registry.  
+Name collisions between MCP tools and built-ins are blocked at boot.
+
+- Supported transport types: `stdio`, `streamable_http`, `sse`
+- Server definitions are configured via `MCP_SERVERS` in `.env`
+- Filesystem MCP should be sandboxed to a dedicated directory like `mcp_workspace`
+
+Detailed guide: `docs/architecture/mcp_integration.md`
+
+## Developer Workflow
+
+### VS Code / Cursor startup task
+
+`.vscode/tasks.json` runs dependency sync on folder open (`scripts/sync_deps.ps1` / `.sh`).
+
+### Git hooks
+
+`hooks/pre-commit` keeps dependencies and `requirements.txt` synchronized before commit.
+
+Enable once per clone:
 
 ```bash
 git config --local core.hooksPath hooks
 ```
 
-After this, commits made from Cursor, VS Code, or the terminal all run the same hook behavior.
+## Testing
 
-## API Endpoints
+- **Unit tests:** `tests/unit`
+- **Integration tests:** `tests/integration`
+- **E2E:** `tests/e2e` (chat e2e test is intentionally skipped unless full stack + keys are configured)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/v1/health` | Health check |
-| `POST` | `/api/v1/auth/register` | Register a new user |
-| `POST` | `/api/v1/auth/login` | Login and get tokens |
-| `POST` | `/api/v1/auth/refresh` | Refresh access token |
-| `GET` | `/api/v1/auth/me` | Get current user profile |
-| `POST` | `/api/v1/sessions/` | Create a chat session |
-| `GET` | `/api/v1/sessions/` | List user sessions |
-| `GET` | `/api/v1/sessions/{id}` | Get session details |
-| `PATCH` | `/api/v1/sessions/{id}` | Rename a session |
-| `DELETE` | `/api/v1/sessions/{id}` | Delete a session |
-| `POST` | `/api/v1/chat/` | Send a message (sync) |
-| `POST` | `/api/v1/chat/stream` | Send a message (SSE stream) |
+Run all:
+
+```bash
+pytest -v
+```
 
 ## Project Principles
 
-- **Dependency Rule** — inner layers never import from outer layers
-- **Ports & Adapters** — all I/O goes through abstract interfaces
-- **Vertical Slices** — each module owns its ports, use-cases, and is independently testable
-- **Pure Domain** — state schemas and routing rules contain zero I/O
-- **Unit of Work** — transactional consistency across repository operations
+- Dependency rule: inner layers do not import outer layers
+- Ports/adapters boundary around I/O
+- Vertical module ownership (`users`, `sessions`, `agent_orchestration`)
+- Pure domain logic with minimal framework coupling
+- Explicit use-case orchestration and UoW-based data consistency
