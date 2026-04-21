@@ -9,9 +9,16 @@ __pycache__/
 dist/
 build/
 .env
+.env.*
+!.env.example
+.python-version
 .coverage
 htmlcov/
 *.db
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*.log
 
 # MCP sandbox workspace — keep folder in repo via .gitkeep only
 mcp_workspace/*

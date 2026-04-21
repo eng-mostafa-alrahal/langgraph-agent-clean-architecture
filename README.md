@@ -210,3 +210,15 @@ pytest -v
 - Vertical module ownership (`users`, `sessions`, `agent_orchestration`)
 - Pure domain logic with minimal framework coupling
 - Explicit use-case orchestration and UoW-based data consistency
+
+## Open Source
+
+This repository is open source under the MIT License. See `LICENSE`.
+
+## Contributing
+
+Contributions are welcome. Please read `CONTRIBUTING.md` before opening a pull request.
+
+## Security
+
+Please report vulnerabilities according to `SECURITY.md` and do not open public issues for sensitive security findings.
