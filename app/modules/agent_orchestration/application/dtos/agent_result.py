@@ -37,6 +37,16 @@ class ApprovalRequest(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
 
 
+_INTERNAL_MEMORY_SUMMARY_PREFIX = "Conversation summary:"
+
+
+def is_internal_memory_summary_message(message: AgentMessage) -> bool:
+    """True when the message is an internal memory-compaction summary."""
+    if message.type != "ai":
+        return False
+    return message.content.lstrip().startswith(_INTERNAL_MEMORY_SUMMARY_PREFIX)
+
+
 class AgentRunResult(BaseModel):
     """Final output of a single graph invocation (sync or resumed)."""
 
@@ -50,7 +60,7 @@ class AgentRunResult(BaseModel):
     @property
     def last_ai_reply(self) -> str:
         for msg in reversed(self.messages):
-            if msg.type == "ai":
+            if msg.type == "ai" and not is_internal_memory_summary_message(msg):
                 return msg.content
         return self.messages[-1].content if self.messages else ""
 

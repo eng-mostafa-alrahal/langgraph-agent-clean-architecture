@@ -16,7 +16,6 @@ def _quiet_noisy_loggers() -> None:
         "httpcore": logging.WARNING,
         "httpx": logging.WARNING,
         "urllib3": logging.WARNING,
-        "groq": logging.WARNING,
         # Optional tracing backend chatter
         "langsmith": logging.WARNING,
         # SQL statement spam (keep warnings/errors only)

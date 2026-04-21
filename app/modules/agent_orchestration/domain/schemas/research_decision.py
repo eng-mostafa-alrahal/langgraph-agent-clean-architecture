@@ -27,7 +27,7 @@ class ResearchDecision(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _normalize_llm_field_aliases(cls, data: Any) -> Any:
-        """Groq json_mode often returns different key names than our schema."""
+        """Some providers may return alternate key names; normalize to our schema."""
         if not isinstance(data, dict):
             return data
         d = dict(data)
@@ -84,7 +84,7 @@ class WorkspaceLoopDecision(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _normalize_llm_field_aliases(cls, data: Any) -> Any:
-        """Groq json_mode often returns different key names; accept research-shaped aliases."""
+        """Accept alternate key names and normalize them for this schema."""
         if not isinstance(data, dict):
             return data
         d = dict(data)

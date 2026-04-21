@@ -8,7 +8,6 @@ from langchain_core.language_models import BaseChatModel
 
 from app.infrastructure.llm_gateways.anthropic_service import build_anthropic_chat
 from app.infrastructure.llm_gateways.google_service import build_google_chat
-from app.infrastructure.llm_gateways.groq_service import build_groq_chat
 from app.infrastructure.llm_gateways.openai_service import build_openai_chat
 from app.modules.agent_orchestration.application.ports.llm_registry_port import ILLMRegistry
 
@@ -18,7 +17,6 @@ class LLMRegistry(ILLMRegistry):
         "openai": build_openai_chat,
         "anthropic": build_anthropic_chat,
         "gemini": build_google_chat,
-        "groq": build_groq_chat,
     }
 
     def get_model(self, provider: str, model_name: str | None = None) -> BaseChatModel:

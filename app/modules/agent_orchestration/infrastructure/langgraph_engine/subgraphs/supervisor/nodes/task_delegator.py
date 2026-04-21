@@ -19,6 +19,7 @@ from app.modules.agent_orchestration.domain.schemas.research_decision import Del
 from app.modules.agent_orchestration.domain.states.supervisor_state import SupervisorState
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.mappers.prompt_mapper import (
     to_chat_prompt_template,
+    trim_messages_for_supervisor_routing,
 )
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.prompt_trace_config import (
     trace_run_config_from_metadata,
@@ -50,6 +51,7 @@ def make_task_delegator_node(
     *,
     prompt_provider: IPromptProvider,
     include_workspace_agent: bool = True,
+    routing_max_tokens: int,
 ):
     structured_llm = with_pydantic_output(llm, DelegationDecision)
 
@@ -72,8 +74,12 @@ def make_task_delegator_node(
         chain = prompt | structured_llm
         trace_cfg = trace_run_config_from_metadata(rendered.metadata)
 
+        routing_messages = trim_messages_for_supervisor_routing(
+            state["messages"],
+            max_tokens=routing_max_tokens,
+        )
         decision: DelegationDecision = await chain.ainvoke(  # type: ignore[assignment]
-            {"messages": state["messages"]},
+            {"messages": routing_messages},
             config=trace_cfg,
         )
         raw = decision.next_agent.strip().lower().replace("-", "_")

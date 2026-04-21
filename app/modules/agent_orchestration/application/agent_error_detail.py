@@ -1,4 +1,4 @@
-"""Format provider errors for API responses (e.g. Groq tool_use_failed + failed_generation)."""
+"""Format provider errors for API responses."""
 
 from __future__ import annotations
 

@@ -6,7 +6,6 @@ langchain-core>=0.3.13
 langchain-openai>=0.2.5
 langchain-anthropic>=0.3.0
 langchain-google-genai>=2.0.0
-langchain-groq>=0.2.0
 langgraph-checkpoint-postgres>=2.0.0
 fastapi>=0.115.0
 uvicorn[standard]>=0.31.0

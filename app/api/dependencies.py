@@ -135,7 +135,14 @@ def _orchestrator_tool_config_sig(settings: Settings) -> tuple[object, ...]:
         bool(settings.OPENAI_API_KEY),
         settings.DEFAULT_LLM_PROVIDER,
         settings.DEFAULT_MODEL_NAME,
-        settings.GROQ_TOOL_CALLING_MODEL,
+        settings.AGENT_MAX_CONTEXT_TOKENS,
+        settings.SUPERVISOR_ROUTING_MAX_TOKENS,
+        settings.MAX_TOOL_OUTPUT_CHARS,
+        settings.MEMORY_SUMMARIZATION_TRIGGER_MESSAGES,
+        settings.MEMORY_SUMMARIZATION_KEEP_RECENT_MESSAGES,
+        settings.MEMORY_SUMMARY_MAX_CHARS,
+        settings.MEMORY_SUMMARIZER_PROVIDER,
+        settings.MEMORY_SUMMARIZER_MODEL_NAME,
         mcp_sig,
     )
 

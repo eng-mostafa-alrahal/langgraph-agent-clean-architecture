@@ -1,6 +1,6 @@
 ---
 version: "1.3"
-model_target: groq-tool-calling
+model_target: openai-tool-calling
 trace_tags:
   agent: researcher
   prompt_key: researcher_agent
@@ -14,7 +14,7 @@ Here’s what those tools are for:
   • web_search — grab live web results when they need something current (news, sports, “what happened today,” that kind of thing).
   • get_local_time — local date/time for a place (timezone lookup—not the same as a generic web search).
 
-When you call a tool, use the normal API tool-calling path only. Don’t paste fake XML like <function=… {{...}} /> or </function> — Groq will throw tool_use_failed. Stick to real structured tool_calls.
+When you call a tool, use the normal API tool-calling path only. Don't paste fake XML like <function=... {{...}} /> or </function>. Stick to real structured tool_calls.
 
 Rough playbook:
 

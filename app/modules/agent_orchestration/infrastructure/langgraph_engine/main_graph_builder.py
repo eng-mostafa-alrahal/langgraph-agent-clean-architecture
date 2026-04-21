@@ -80,14 +80,11 @@ class MainGraphOrchestrator(IAgentOrchestrator):
                 settings.DEFAULT_MODEL_NAME,
             )
             researcher_llm = llm
-            if (
-                settings.DEFAULT_LLM_PROVIDER == "groq"
-                and settings.GROQ_TOOL_CALLING_MODEL
-                and settings.GROQ_TOOL_CALLING_MODEL != settings.DEFAULT_MODEL_NAME
-            ):
-                researcher_llm = self._llm_registry.get_model(
-                    "groq",
-                    settings.GROQ_TOOL_CALLING_MODEL,
+            memory_llm = llm
+            if settings.MEMORY_SUMMARIZER_PROVIDER and settings.MEMORY_SUMMARIZER_MODEL_NAME:
+                memory_llm = self._llm_registry.get_model(
+                    settings.MEMORY_SUMMARIZER_PROVIDER,
+                    settings.MEMORY_SUMMARIZER_MODEL_NAME,
                 )
             all_tools = self._tool_registry.get_tools(self._tool_registry.list_available())
             research_tools, workspace_tools = partition_tools_for_agents(all_tools)
@@ -103,6 +100,13 @@ class MainGraphOrchestrator(IAgentOrchestrator):
                 workspace_tools,
                 prompt_provider=prompt_provider,
                 researcher_llm=researcher_llm,
+                agent_max_context_tokens=settings.AGENT_MAX_CONTEXT_TOKENS,
+                supervisor_routing_max_tokens=settings.SUPERVISOR_ROUTING_MAX_TOKENS,
+                max_tool_output_chars=settings.MAX_TOOL_OUTPUT_CHARS,
+                memory_trigger_messages=settings.MEMORY_SUMMARIZATION_TRIGGER_MESSAGES,
+                memory_keep_recent_messages=settings.MEMORY_SUMMARIZATION_KEEP_RECENT_MESSAGES,
+                memory_summary_max_chars=settings.MEMORY_SUMMARY_MAX_CHARS,
+                memory_llm=memory_llm,
             ).compile()
 
             master = StateGraph(SupervisorState)

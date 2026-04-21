@@ -24,6 +24,7 @@ from app.core.observability.request_context import get_request_id
 from app.modules.agent_orchestration.application.dtos.agent_result import (
     AgentEvent,
     AgentMessage,
+    is_internal_memory_summary_message,
 )
 from app.modules.agent_orchestration.application.use_cases.execute_graph_uc import (
     ExecuteGraphUseCase,
@@ -52,23 +53,19 @@ def _event_has_message_content(messages: list[AgentMessage]) -> bool:
 
 def _compact_event_payload(event: AgentEvent) -> dict[str, Any] | None:
     last_ai: AgentMessage | None = next(
-        (m for m in reversed(event.messages) if m.type == "ai"),
+        (
+            m
+            for m in reversed(event.messages)
+            if m.type == "ai" and not is_internal_memory_summary_message(m)
+        ),
         None,
     )
     if last_ai is None:
         return None
-    assistant: dict[str, Any] = {"content": last_ai.content}
-    if last_ai.id:
-        assistant["id"] = last_ai.id
-    if last_ai.model:
-        assistant["model"] = last_ai.model
-    if last_ai.usage:
-        assistant["usage"] = last_ai.usage
-    if last_ai.tool_calls:
-        assistant["tool_calls"] = last_ai.tool_calls
-    if not (assistant.get("content") or assistant.get("tool_calls")):
+    content = last_ai.content
+    if not content:
         return None
-    return {"node": event.node, "assistant": assistant}
+    return {"content": content}
 
 
 @router.post(
@@ -117,8 +114,8 @@ async def chat(
     summary="Send message (streaming response)",
     description=(
         "Run the agent and stream Server-Sent Events (SSE). "
-        "Default (`stream_detail=content`) sends a small JSON per line: `node` and `assistant` "
-        "(latest AI message only, plus optional usage/tool_calls). "
+        "Default (`stream_detail=content`) sends a small JSON per line with only `content` "
+        "(latest AI message text only). "
         "Use `stream_detail=full` for the full per-node DTO including message history. "
         "Ends with `data: [DONE]`."
     ),

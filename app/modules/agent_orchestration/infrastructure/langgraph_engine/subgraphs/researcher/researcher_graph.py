@@ -19,12 +19,16 @@ from app.modules.agent_orchestration.domain.routing_rules.researcher_router impo
 from app.modules.agent_orchestration.domain.states.researcher_state import ResearcherState
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.mappers.prompt_mapper import (
     to_chat_prompt_template,
+    trim_conversation_messages,
 )
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.prompt_trace_config import (
     trace_run_config_from_metadata,
 )
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.shared_nodes.tool_error_handler import (  # noqa: E501
     researcher_tool_execution_error,
+)
+from app.modules.agent_orchestration.infrastructure.langgraph_engine.tool_output_cap import (
+    tool_call_truncators,
 )
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.researcher.nodes.context_validator import (  # noqa: E501
     make_context_validator_node,
@@ -33,7 +37,7 @@ from app.modules.agent_orchestration.infrastructure.langgraph_engine.subgraphs.r
 logger = logging.getLogger(__name__)
 
 
-def _is_groq_tool_invocation_format_error(exc: BaseException) -> bool:
+def _is_tool_invocation_format_error(exc: BaseException) -> bool:
     s = str(exc).lower()
     return "tool_use_failed" in s or "failed to call a function" in s
 
@@ -51,6 +55,8 @@ def build_researcher_graph(
     tools: list[BaseTool],
     *,
     prompt_provider: IPromptProvider,
+    max_context_tokens: int,
+    max_tool_output_chars: int,
 ) -> StateGraph:
     llm_with_tools = llm.bind_tools(tools)
     rendered = prompt_provider.resolve_prompt(PromptIntent.RESEARCHER_AGENT, PromptContext())
@@ -65,13 +71,15 @@ def build_researcher_graph(
 
     async def plan_search(state: ResearcherState) -> dict:
         chain = prompt | llm_with_tools
-        base_messages = list(state["messages"])
+        base_messages = trim_conversation_messages(
+            state["messages"],
+            max_tokens=max_context_tokens,
+        )
         nudge = (
             "Important: invoke tools only via native tool_calls from the API "
             "(including any MCP tools "
             "prefixed like filesystem__…). "
-            "Do not write <function=...>, </function>, or any XML-style tool syntax "
-            "- Groq rejects that."
+            "Do not write <function=...>, </function>, or any XML-style tool syntax."
         )
         for attempt in range(2):
             try:
@@ -81,8 +89,8 @@ def build_researcher_graph(
                 response = await chain.ainvoke({"messages": msgs}, config=trace_cfg)
                 return {"messages": [response]}
             except Exception as exc:
-                if attempt == 0 and _is_groq_tool_invocation_format_error(exc):
-                    logger.warning("plan_search: retrying after Groq tool format error: %s", exc)
+                if attempt == 0 and _is_tool_invocation_format_error(exc):
+                    logger.warning("plan_search: retrying after tool format error: %s", exc)
                     continue
                 raise
 
@@ -111,12 +119,20 @@ def build_researcher_graph(
                 "Stay brief and friendly. If something needs fresh facts you don't have, "
                 "say so in one short line."
             )
-        # Keep full thread so model still sees the original user question.
-        messages = [*list(state["messages"]), HumanMessage(content=tail)]
+        trimmed = trim_conversation_messages(
+            state["messages"],
+            max_tokens=max_context_tokens,
+        )
+        messages = [*trimmed, HumanMessage(content=tail)]
         response = await llm.ainvoke(messages)
         return {"messages": [AIMessage(content=str(response.content))]}
 
-    tool_node = ToolNode(tools, handle_tool_errors=researcher_tool_execution_error)
+    sync_trunc, async_trunc = tool_call_truncators(max_tool_output_chars)
+    _tool_kw: dict[str, object] = {"handle_tool_errors": researcher_tool_execution_error}
+    if sync_trunc is not None and async_trunc is not None:
+        _tool_kw["wrap_tool_call"] = sync_trunc
+        _tool_kw["awrap_tool_call"] = async_trunc
+    tool_node = ToolNode(tools, **_tool_kw)
 
     graph = StateGraph(ResearcherState)
     graph.add_node("plan_search", plan_search)

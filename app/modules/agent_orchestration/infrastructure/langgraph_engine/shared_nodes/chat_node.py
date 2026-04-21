@@ -13,6 +13,7 @@ from app.modules.agent_orchestration.domain.prompts.intent import PromptIntent
 from app.modules.agent_orchestration.domain.states.base_state import BaseAgentState
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.mappers.prompt_mapper import (
     to_chat_prompt_template,
+    trim_conversation_messages,
 )
 from app.modules.agent_orchestration.infrastructure.langgraph_engine.prompt_trace_config import (
     trace_run_config_from_metadata,
@@ -21,7 +22,12 @@ from app.modules.agent_orchestration.infrastructure.langgraph_engine.prompt_trac
 logger = logging.getLogger(__name__)
 
 
-def make_chat_node(llm: BaseChatModel, *, prompt_provider: IPromptProvider):
+def make_chat_node(
+    llm: BaseChatModel,
+    *,
+    prompt_provider: IPromptProvider,
+    max_context_tokens: int,
+):
     rendered = prompt_provider.resolve_prompt(PromptIntent.CHAT_AGENT, PromptContext())
     prompt = to_chat_prompt_template(rendered)
     trace_cfg = trace_run_config_from_metadata(rendered.metadata)
@@ -34,7 +40,11 @@ def make_chat_node(llm: BaseChatModel, *, prompt_provider: IPromptProvider):
     chain = prompt | llm
 
     async def chat_node(state: BaseAgentState) -> dict:
-        response = await chain.ainvoke({"messages": state["messages"]}, config=trace_cfg)
+        bounded = trim_conversation_messages(
+            state["messages"],
+            max_tokens=max_context_tokens,
+        )
+        response = await chain.ainvoke({"messages": bounded}, config=trace_cfg)
         if isinstance(response, AIMessage):
             return {"messages": [response]}
         return {"messages": [AIMessage(content=str(response))]}

@@ -63,15 +63,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
-    GROQ_API_KEY: str = ""
-    DEFAULT_LLM_PROVIDER: Literal["openai", "anthropic", "gemini", "groq"] = "groq"
-    # Groq: gpt-oss is strong for reasoning/chat; many IDs still emit
-    # invalid <function=...> XML for bind_tools.
+    DEFAULT_LLM_PROVIDER: Literal["openai", "anthropic", "gemini"] = "openai"
     DEFAULT_MODEL_NAME: str = "openai/gpt-oss-120b"
-    # Groq-only model for researcher plan_search (bind_tools).
-    # Llama 3.1 8B follows native tool_calls reliably.
-    # Empty = use DEFAULT_MODEL_NAME for tools too (may hit tool_use_failed on some models).
-    GROQ_TOOL_CALLING_MODEL: str = "llama-3.1-8b-instant"
 
     # ── Research Tools ────────────────────────────────────────
     TAVILY_API_KEY: str = Field(
@@ -97,6 +90,18 @@ class Settings(BaseSettings):
     PROMPT_ASSETS_DIR: str | None = None
     PROMPT_REGISTRY_PATH: str | None = None
 
+    # ── Agent context (approximate tokenizer units via LangChain trim_messages) ──
+    # Mirrors recommended defaults in ``agent_orchestration.domain.memory_budget`` /
+    # ``tool_execution_policy``. Set to 0 to disable trimming / caps for that path.
+    AGENT_MAX_CONTEXT_TOKENS: int = 12_000
+    SUPERVISOR_ROUTING_MAX_TOKENS: int = 2_048
+    MAX_TOOL_OUTPUT_CHARS: int = 10_000
+    MEMORY_SUMMARIZATION_TRIGGER_MESSAGES: int = 40
+    MEMORY_SUMMARIZATION_KEEP_RECENT_MESSAGES: int = 12
+    MEMORY_SUMMARY_MAX_CHARS: int = 4_000
+    MEMORY_SUMMARIZER_PROVIDER: Literal["openai", "anthropic", "gemini", ""] = ""
+    MEMORY_SUMMARIZER_MODEL_NAME: str = ""
+
     # ── Celery ───────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
@@ -104,13 +109,6 @@ class Settings(BaseSettings):
     @field_validator("TAVILY_API_KEY", mode="before")
     @classmethod
     def _strip_tavily_api_key(cls, v: object) -> str:
-        if v is None:
-            return ""
-        return str(v).strip()
-
-    @field_validator("GROQ_TOOL_CALLING_MODEL", mode="before")
-    @classmethod
-    def _strip_groq_tool_model(cls, v: object) -> str:
         if v is None:
             return ""
         return str(v).strip()
