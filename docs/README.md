@@ -6,13 +6,19 @@ The docs are intentionally **high level**. For file-by-file detail, read the sou
 
 ## Who this is for
 
+- **New developers joining the project** — start at [`onboarding.md`](./onboarding.md).
 - **OSS users** who want to install, configure, and call the API.
 - **Contributors / maintainers** who want to understand the architecture and safely extend it.
+
+## New here? Read this first
+
+> **[`onboarding.md`](./onboarding.md)** — the comprehensive new‑developer guide. Mental model, day‑1 setup, a guided code tour, recipes for common changes, debugging tips, and a glossary. Roughly a 30‑minute read; the rest of the docs below are referenced from it as you need them.
 
 ## Quick map
 
 | Topic | Start here |
 |---|---|
+| **Joining the project for the first time** | **[`onboarding.md`](./onboarding.md)** |
 | Install + run a first chat | [`getting-started.md`](./getting-started.md) |
 | How the code is layered | [`architecture.md`](./architecture.md) |
 | What happens on `POST /chat/` | [`request-flow.md`](./request-flow.md) |
@@ -29,11 +35,12 @@ The docs are intentionally **high level**. For file-by-file detail, read the sou
 
 If this is your first time in the repo, read in this order:
 
-1. [`getting-started.md`](./getting-started.md) — get the API up.
-2. [`architecture.md`](./architecture.md) — understand the layers and dependency rule.
-3. [`request-flow.md`](./request-flow.md) — follow one request end-to-end.
-4. [`agent-orchestration.md`](./agent-orchestration.md) — learn the LangGraph internals.
-5. Pick any topic from the table above.
+1. [`onboarding.md`](./onboarding.md) — mental model, setup, guided tour, recipes.
+2. [`getting-started.md`](./getting-started.md) — reference for the install/first‑chat commands.
+3. [`architecture.md`](./architecture.md) — full layering diagrams and the dependency rule.
+4. [`request-flow.md`](./request-flow.md) — one request end‑to‑end.
+5. [`agent-orchestration.md`](./agent-orchestration.md) — LangGraph internals.
+6. Pick any topic from the table above.
 
 ## Conventions
 

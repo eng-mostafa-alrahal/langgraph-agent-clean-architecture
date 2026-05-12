@@ -1,3 +1,5 @@
+> **First time in this repo?** Read [`docs/onboarding.md`](./docs/onboarding.md) before opening a PR. It covers the mental model, the dependency rule, where things live, and the recipes for common changes.
+
 # Contributing
 
 Thanks for your interest in contributing.

@@ -4,6 +4,8 @@ Production-oriented FastAPI + LangGraph backend structured with Clean Architectu
 The system provides authenticated chat sessions, agent orchestration, optional human-in-the-loop approval, and pluggable tools (built-in + MCP).
 
 > **Full project documentation lives in [`docs/`](./docs/README.md)** — architecture, request flow, agent orchestration internals, API reference, configuration, data model, tools, deployment, and testing.
+>
+> **New here?** Start with [`docs/onboarding.md`](./docs/onboarding.md) — the comprehensive new‑developer guide.
 
 ## What This Project Includes
 
